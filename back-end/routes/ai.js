@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const auth = require('../middleware/auth');
-const { generateDesignJson } = require('../utils/mockDesignGenerator');
+const { generateDesignJson, generateHistoryTitle } = require('../utils/mockDesignGenerator');
 
 const router = express.Router();
 
@@ -26,9 +26,13 @@ router.post('/text-to-design', auth, async (req, res) => {
     // 使用伪数据生成器生成 Design JSON
     const designJson = generateDesignJson(text, currentDesignJson);
 
+    // 生成历史记录标题
+    const title = generateHistoryTitle(text, 'text-to-design');
+
     res.json({
       success: true,
-      designJson
+      designJson,
+      title
     });
   } catch (error) {
     res.status(500).json({ message: '生成失败', error: error.message });
@@ -101,9 +105,13 @@ router.post('/image-to-design', auth, (req, res, next) => {
     // 如果有图片，可以根据图片数量调整生成逻辑
     const designJson = generateDesignJson(text, currentDesignJson);
 
+    // 生成历史记录标题
+    const title = generateHistoryTitle(text, 'image-to-design', images.length);
+
     res.json({
       success: true,
       designJson,
+      title,
       imageCount: images.length
     });
   } catch (error) {

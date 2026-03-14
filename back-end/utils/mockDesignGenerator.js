@@ -1077,8 +1077,67 @@ function generateDesignJson(text, currentDesignJson = null) {
   return createNewDesignJson(intent);
 }
 
+/**
+ * 根据用户输入生成历史记录标题
+ * @param {string} text - 用户输入文本
+ * @param {string} moduleType - 模块类型
+ * @param {number} imageCount - 图片数量
+ * @returns {string} 生成的标题
+ */
+function generateHistoryTitle(text, moduleType, imageCount = 0) {
+  if (!text || text.trim().length === 0) {
+    if (moduleType === 'image-to-design') {
+      return imageCount > 1 ? `图片设计 (${imageCount}张)` : '图片设计';
+    }
+    return '新对话';
+  }
+
+  const trimmedText = text.trim();
+  
+  // 如果输入很短（<=20字符），直接用作标题
+  if (trimmedText.length <= 20) {
+    return trimmedText;
+  }
+  
+  // 提取关键词生成标题
+  const intent = parseIntent(trimmedText);
+  
+  // 根据页面类型生成标题
+  if (intent.pageType) {
+    const typeMap = {
+      '登录': '登录页面',
+      '注册': '注册页面',
+      '仪表盘': '数据仪表盘',
+      '首页': '网站首页',
+      '卡片': '卡片列表',
+      '列表': '列表页面',
+      '导航': '导航页面',
+      '表单': '表单页面'
+    };
+    
+    if (typeMap[intent.pageType]) {
+      return typeMap[intent.pageType];
+    }
+  }
+  
+  // 根据操作类型生成标题
+  if (intent.isModification) {
+    if (intent.colors.length > 0) {
+      return `样式调整 - ${trimmedText.substring(0, 15)}...`;
+    }
+    if (intent.actions.includes('添加') || intent.components.length > 0) {
+      return `添加组件 - ${trimmedText.substring(0, 15)}...`;
+    }
+    return `修改设计 - ${trimmedText.substring(0, 15)}...`;
+  }
+  
+  // 默认截取前20个字符
+  return trimmedText.substring(0, 20) + (trimmedText.length > 20 ? '...' : '');
+}
+
 module.exports = {
   generateDesignJson,
+  generateHistoryTitle,
   parseIntent,
   createLoginPage,
   createRegisterPage,

@@ -202,15 +202,15 @@ const SidebarHistory = () => {
               onClick={() => handleRestore(history)}
               onMouseEnter={() => setHoveredId(history._id)}
               onMouseLeave={() => setHoveredId(null)}
-              title={history.userInput || '点击恢复'}
+              title={history.title || history.userInput || '点击恢复'}
             >
               <div className="sidebar-history-content">
                 <div className="sidebar-history-time">{formatDate(history.createdAt)}</div>
-                {history.userInput && (
+                {(history.title || history.userInput) && (
                   <div className="sidebar-history-text">
-                    {history.userInput.length > 20 
-                      ? history.userInput.substring(0, 20) + '...'
-                      : history.userInput}
+                    {(history.title || history.userInput).length > 20 
+                      ? (history.title || history.userInput).substring(0, 20) + '...'
+                      : (history.title || history.userInput)}
                   </div>
                 )}
                 {getTagLabel(history) && (

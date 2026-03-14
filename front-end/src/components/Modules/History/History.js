@@ -99,15 +99,15 @@ const History = () => {
           histories.map(history => (
             <div key={history._id} className={`history-item ${history._id === currentHistoryId ? 'active' : ''}`}>
               <div className="history-info">
-                <div className="history-title">{getModuleName(history.moduleType)}</div>
+                <div className="history-title">{history.title || getModuleName(history.moduleType)}</div>
                 <div className="history-meta">
                   <span>{formatDate(history.createdAt)}</span>
                   {history.framework && (
                     <span className="history-framework">{history.framework.toUpperCase()}</span>
                   )}
                 </div>
-                {history.userInput && (
-                  <div className="history-input">{history.userInput}</div>
+                {(history.title || history.userInput) && (
+                  <div className="history-input">{history.title || history.userInput}</div>
                 )}
               </div>
               <div className="history-actions">

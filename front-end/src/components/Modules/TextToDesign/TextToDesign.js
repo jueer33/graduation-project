@@ -167,9 +167,10 @@ const TextToDesign = () => {
         // 获取当前对话内容（包含用户输入和设计稿消息）
         const currentConversations = getCurrentConversations();
 
-        // 准备历史记录数据
+        // 准备历史记录数据（使用后端生成的标题）
         const historyData = {
           moduleType: currentModule,
+          title: response.title || text,
           userInput: text,
           designJson: response.designJson,
           conversations: currentConversations,
@@ -206,6 +207,7 @@ const TextToDesign = () => {
             // 立即将新记录添加到历史记录列表（前端状态）
             const newHistory = {
               ...historyResponse.data,
+              title: response.title || text,
               userInput: text,
               moduleType: currentModule,
               createdAt: new Date().toISOString()

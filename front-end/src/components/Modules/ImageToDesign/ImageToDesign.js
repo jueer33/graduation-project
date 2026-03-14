@@ -151,6 +151,7 @@ const ImageToDesign = () => {
 
           const historyData = {
             moduleType: currentModule,
+            title: response.title || (text || `图片上传（${images.length}张）`),
             userInput: text || `图片上传（${images.length}张）`,
             designJson: response.designJson,
             conversations: currentConversations,
@@ -180,6 +181,7 @@ const ImageToDesign = () => {
               setCurrentHistoryId(historyResponse.data._id);
               const newHistory = {
                 ...historyResponse.data,
+                title: response.title || (text || `图片上传（${images.length}张）`),
                 userInput: text || `图片上传（${images.length}张）`,
                 moduleType: currentModule,
                 createdAt: new Date().toISOString()

@@ -11,6 +11,10 @@ const historySchema = new mongoose.Schema({
     enum: ['text-to-design', 'image-to-design', 'design-to-code'],
     required: true
   },
+  title: {
+    type: String,
+    default: ''
+  },
   userInput: {
     type: String,
     default: ''

@@ -57,7 +57,7 @@ router.get('/:id', auth, async (req, res) => {
 // 创建历史记录
 router.post('/', auth, async (req, res) => {
   try {
-    const { moduleType, userInput, designJson, generatedCode, framework, conversations } = req.body;
+    const { moduleType, title, userInput, designJson, generatedCode, framework, conversations } = req.body;
 
     if (!moduleType) {
       return res.status(400).json({ message: '功能模块类型不能为空' });
@@ -66,6 +66,7 @@ router.post('/', auth, async (req, res) => {
     const history = new History({
       userId: req.user._id,
       moduleType,
+      title: title || userInput || '新对话',
       userInput: userInput || '',
       designJson: designJson || null,
       generatedCode: generatedCode || null,
@@ -87,7 +88,7 @@ router.post('/', auth, async (req, res) => {
 // 更新历史记录 (PUT)
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { designJson, generatedCode, userInput, conversations } = req.body;
+    const { title, designJson, generatedCode, userInput, conversations } = req.body;
 
     const history = await History.findOne({
       _id: req.params.id,
@@ -98,6 +99,7 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: '历史记录不存在' });
     }
 
+    if (title !== undefined) history.title = title;
     if (designJson !== undefined) history.designJson = designJson;
     if (generatedCode !== undefined) history.generatedCode = generatedCode;
     if (userInput !== undefined) history.userInput = userInput;
@@ -118,7 +120,7 @@ router.put('/:id', auth, async (req, res) => {
 // 更新历史记录 (POST - 用于sendBeacon)
 router.post('/:id', auth, async (req, res) => {
   try {
-    const { designJson, generatedCode, userInput, conversations } = req.body;
+    const { title, designJson, generatedCode, userInput, conversations } = req.body;
 
     const history = await History.findOne({
       _id: req.params.id,
@@ -129,6 +131,7 @@ router.post('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: '历史记录不存在' });
     }
 
+    if (title !== undefined) history.title = title;
     if (designJson !== undefined) history.designJson = designJson;
     if (generatedCode !== undefined) history.generatedCode = generatedCode;
     if (userInput !== undefined) history.userInput = userInput;

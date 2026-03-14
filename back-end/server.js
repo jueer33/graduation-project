@@ -20,7 +20,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/history', require('./routes/history'));
 
 // 数据库连接
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://jueer33:Sd2wdSjXcM0dwtSU@img2code.cankhnb.mongodb.net/?appName=img2code')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://jueer33:Sd2wdSjXcM0dwtSU@img2code.cankhnb.mongodb.net/img2code?appName=img2code')
   .then(() => console.log('MongoDB连接成功'))
   .catch(err => console.error('MongoDB连接失败:', err));
 
