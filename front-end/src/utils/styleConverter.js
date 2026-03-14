@@ -91,6 +91,19 @@ export const convertStyleToCSS = (designStyle = {}) => {
       return;
     }
     
+    // 处理背景图片
+    if (key === 'backgroundImage' && value) {
+      // 确保 URL 格式正确
+      if (value.startsWith('http') || value.startsWith('data:') || value.startsWith('blob:')) {
+        cssStyle.backgroundImage = `url(${value})`;
+      } else if (!value.startsWith('url(')) {
+        cssStyle.backgroundImage = `url(${value})`;
+      } else {
+        cssStyle.backgroundImage = value;
+      }
+      return;
+    }
+    
     // 处理间距属性
     if (SPACING_PROPERTIES.includes(key) && Array.isArray(value)) {
       cssStyle[key] = convertSpacing(value);

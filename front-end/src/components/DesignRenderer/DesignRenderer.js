@@ -1,23 +1,40 @@
 import React, { memo, useCallback } from 'react';
 import './DesignRenderer.css';
 import { convertStyleToCSS } from '../../utils/styleConverter';
+import useDragAndDrop from '../../hooks/useDragAndDrop';
 
 /**
  * 设计渲染器组件
  * 将Design JSON递归渲染为可交互的React组件树
- * 
+ *
  * @param {Object} props
  * @param {Object} props.designJson - Design JSON数据
  * @param {string} props.selectedId - 当前选中的节点ID
  * @param {Function} props.onSelect - 选中节点回调
+ * @param {Function} props.onMoveNode - 移动节点回调
  * @param {boolean} props.editable - 是否可编辑模式
  */
-const DesignRenderer = ({ 
-  designJson, 
-  selectedId = null, 
+const DesignRenderer = ({
+  designJson,
+  selectedId = null,
   onSelect = () => {},
-  editable = false 
+  onMoveNode = () => {},
+  editable = false
 }) => {
+  // 使用拖拽Hook
+  const {
+    dragState,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+    getDragClassName
+  } = useDragAndDrop({
+    onDrop: ({ dragNodeId, dropTargetId, dropPosition, isRowLayout }) => {
+      onMoveNode(dragNodeId, dropTargetId, dropPosition, isRowLayout);
+    }
+  });
   
   /**
    * 渲染单个节点
@@ -29,25 +46,35 @@ const DesignRenderer = ({
     if (!node) return null;
 
     const { id, type, style = {}, content, placeholder, src, alt, children } = node;
-    
+
     // 转换样式
     const cssStyle = convertStyleToCSS(style);
-    
+
     // 是否被选中
     const isSelected = selectedId === id;
-    
+
+    // 拖拽状态类名
+    const dragClassName = editable ? getDragClassName(id) : '';
+
     // 基础节点属性
     const nodeProps = {
       'data-node-id': id,
       'data-node-type': type,
-      className: `design-node design-${type} ${isSelected ? 'design-node-selected' : ''}`,
+      className: `design-node design-${type} ${isSelected ? 'design-node-selected' : ''} ${dragClassName}`,
       style: cssStyle,
       onClick: (e) => {
         e.stopPropagation();
         if (editable) {
           onSelect(id);
         }
-      }
+      },
+      // 拖拽相关属性
+      draggable: editable,
+      onDragStart: (e) => handleDragStart(e, id, type),
+      onDragOver: (e) => handleDragOver(e, id, type),
+      onDragLeave: handleDragLeave,
+      onDrop: (e) => handleDrop(e, id),
+      onDragEnd: handleDragEnd
     };
 
     // 根据类型渲染不同组件
@@ -149,7 +176,7 @@ const DesignRenderer = ({
           </div>
         );
     }
-  }, [selectedId, onSelect, editable]);
+  }, [selectedId, onSelect, editable, getDragClassName, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd]);
 
   // 验证Design JSON
   if (!designJson) {

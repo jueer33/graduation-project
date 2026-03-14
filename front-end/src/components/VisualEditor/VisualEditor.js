@@ -13,6 +13,7 @@ import {
   createDesignJSON 
 } from '../../utils/designJsonUtils';
 import { createNode, getComponentTypes, canHaveChildren } from '../../constants/componentTemplates';
+import { handleImageUpload } from '../../utils/imageUpload';
 
 /**
  * 可视化编辑器组件
@@ -171,6 +172,114 @@ const VisualEditor = ({
     onSave(designJson);
   }, [designJson, onSave]);
 
+  /**
+   * 处理图片上传
+   */
+  const handleImageFileUpload = useCallback(async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedId) return;
+    
+    const result = await handleImageUpload(file);
+    if (result.success) {
+      handleUpdateNode(selectedId, { src: result.data });
+    } else {
+      alert(result.error);
+    }
+    
+    // 清空input以便可以重复选择同一文件
+    e.target.value = '';
+  }, [selectedId, handleUpdateNode]);
+
+  /**
+   * 处理背景图片上传
+   */
+  const handleBackgroundImageUpload = useCallback(async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedId) return;
+    
+    const result = await handleImageUpload(file);
+    if (result.success) {
+      handleUpdateStyle({ 
+        backgroundImage: result.data,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      });
+    } else {
+      alert(result.error);
+    }
+    
+    // 清空input以便可以重复选择同一文件
+    e.target.value = '';
+  }, [selectedId, handleUpdateStyle]);
+
+  // 判断是否为容器类组件
+  const isContainer = selectedNode && ['page', 'container', 'card'].includes(selectedNode.type);
+
+  /**
+   * 处理移动节点（拖拽）
+   */
+  const handleMoveNode = useCallback((dragNodeId, dropTargetId, dropPosition) => {
+    // 不能移动到自己
+    if (dragNodeId === dropTargetId) return;
+
+    const { node: dragNode } = findNode(designJson.root, dragNodeId);
+    const { node: targetNode, parent: targetParent } = findNode(designJson.root, dropTargetId);
+
+    if (!dragNode || !targetNode) return;
+
+    // 检查是否尝试将父节点移动到子节点中（避免循环）
+    const isDescendant = (parent, childId) => {
+      if (!parent.children) return false;
+      for (const child of parent.children) {
+        if (child.id === childId) return true;
+        if (isDescendant(child, childId)) return true;
+      }
+      return false;
+    };
+
+    if (isDescendant(dragNode, dropTargetId)) {
+      console.warn('不能将父节点移动到其子节点中');
+      return;
+    }
+
+    let newDesignJson = JSON.parse(JSON.stringify(designJson));
+
+    // 根据放置位置决定如何移动
+    switch (dropPosition) {
+      case 'inside':
+        // 放入目标容器内部
+        if (canHaveChildren(targetNode.type)) {
+          // 从原位置删除
+          newDesignJson = removeNode(newDesignJson, dragNodeId);
+          // 添加到新容器
+          newDesignJson = addChildNode(newDesignJson, dropTargetId, dragNode);
+        }
+        break;
+
+      case 'before':
+      case 'after': {
+        // 放在目标节点之前或之后
+        if (targetParent) {
+          const targetIndex = targetParent.children.findIndex(c => c.id === dropTargetId);
+          const insertIndex = dropPosition === 'before' ? targetIndex : targetIndex + 1;
+
+          // 从原位置删除
+          newDesignJson = removeNode(newDesignJson, dragNodeId);
+
+          // 添加到新位置
+          newDesignJson = addChildNode(newDesignJson, targetParent.id, dragNode, insertIndex);
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    updateDesignJson(newDesignJson);
+  }, [designJson, updateDesignJson]);
+
   // 注册键盘快捷键
   useKeyboardShortcuts({
     onUndo: handleUndo,
@@ -293,6 +402,7 @@ const VisualEditor = ({
             designJson={designJson}
             selectedId={selectedId}
             onSelect={selectNode}
+            onMoveNode={handleMoveNode}
             editable={true}
           />
         </div>
@@ -326,8 +436,50 @@ const VisualEditor = ({
                   </div>
                 </div>
 
+                {/* 图片组件属性 */}
+                {selectedNode.type === 'image' && (
+                  <div className="property-section">
+                    <h4 className="property-section-title">图片</h4>
+                    <div className="property-field">
+                      <label>图片上传</label>
+                      <div className="image-upload-area">
+                        {selectedNode.src && (
+                          <div className="image-preview">
+                            <img src={selectedNode.src} alt="preview" />
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileUpload}
+                          className="image-file-input"
+                          id="image-upload"
+                        />
+                        <label htmlFor="image-upload" className="image-upload-btn">
+                          📤 选择图片
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedNode.src || ''}
+                          onChange={(e) => handleUpdateNode(selectedId, { src: e.target.value })}
+                          placeholder="或输入图片URL"
+                        />
+                      </div>
+                    </div>
+                    <div className="property-field">
+                      <label>替代文本 (alt)</label>
+                      <input
+                        type="text"
+                        value={selectedNode.alt || ''}
+                        onChange={(e) => handleUpdateNode(selectedId, { alt: e.target.value })}
+                        placeholder="图片描述"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* 内容属性 */}
-                {selectedNode.content !== undefined && (
+                {selectedNode.content !== undefined && selectedNode.type !== 'image' && (
                   <div className="property-section">
                     <h4 className="property-section-title">内容</h4>
                     <div className="property-field">
@@ -382,6 +534,108 @@ const VisualEditor = ({
                       />
                     </div>
                   </div>
+
+                  {/* 容器背景图片 */}
+                  {isContainer && (
+                    <>
+                      <div className="property-field">
+                        <label>背景图片</label>
+                        <div className="background-image-area">
+                          {selectedNode.style?.backgroundImage && (
+                            <div 
+                              className="background-image-preview"
+                              style={{ 
+                                backgroundImage: selectedNode.style.backgroundImage.startsWith('url(') 
+                                  ? selectedNode.style.backgroundImage 
+                                  : `url(${selectedNode.style.backgroundImage})`,
+                                backgroundSize: selectedNode.style.backgroundSize || 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            />
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleBackgroundImageUpload}
+                            className="image-file-input"
+                            id="bg-image-upload"
+                          />
+                          <div className="background-image-actions">
+                            <label htmlFor="bg-image-upload" className="image-upload-btn small">
+                              📤 上传背景
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedNode.style?.backgroundImage || ''}
+                              onChange={(e) => handleUpdateStyle({ 
+                                backgroundImage: e.target.value 
+                              })}
+                              placeholder="或输入图片URL"
+                            />
+                            {selectedNode.style?.backgroundImage && (
+                              <button 
+                                className="clear-bg-btn"
+                                onClick={() => handleUpdateStyle({ 
+                                  backgroundImage: undefined,
+                                  backgroundSize: undefined,
+                                  backgroundPosition: undefined,
+                                  backgroundRepeat: undefined
+                                })}
+                              >
+                                ✕ 清除
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {selectedNode.style?.backgroundImage && (
+                        <>
+                          <div className="property-field">
+                            <label>背景尺寸</label>
+                            <select
+                              value={selectedNode.style?.backgroundSize || 'cover'}
+                              onChange={(e) => handleUpdateStyle({ backgroundSize: e.target.value })}
+                            >
+                              <option value="cover">覆盖 (cover)</option>
+                              <option value="contain">包含 (contain)</option>
+                              <option value="auto">自动 (auto)</option>
+                              <option value="100% 100%">拉伸 (100%)</option>
+                            </select>
+                          </div>
+                          <div className="property-field">
+                            <label>背景重复</label>
+                            <select
+                              value={selectedNode.style?.backgroundRepeat || 'no-repeat'}
+                              onChange={(e) => handleUpdateStyle({ backgroundRepeat: e.target.value })}
+                            >
+                              <option value="no-repeat">不重复</option>
+                              <option value="repeat">重复</option>
+                              <option value="repeat-x">水平重复</option>
+                              <option value="repeat-y">垂直重复</option>
+                            </select>
+                          </div>
+                          <div className="property-field">
+                            <label>背景位置</label>
+                            <select
+                              value={selectedNode.style?.backgroundPosition || 'center'}
+                              onChange={(e) => handleUpdateStyle({ backgroundPosition: e.target.value })}
+                            >
+                              <option value="center">居中</option>
+                              <option value="top">顶部</option>
+                              <option value="bottom">底部</option>
+                              <option value="left">左侧</option>
+                              <option value="right">右侧</option>
+                              <option value="top left">左上</option>
+                              <option value="top right">右上</option>
+                              <option value="bottom left">左下</option>
+                              <option value="bottom right">右下</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
 
                   {/* 文字颜色 */}
                   <div className="property-field">

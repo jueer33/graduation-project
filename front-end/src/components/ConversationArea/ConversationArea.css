@@ -1,11 +1,11 @@
 .conversation-area {
-  flex: 1;
   min-width: 300px;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-primary);
   border-right: 1px solid var(--border-primary);
   overflow: hidden;
+  /* flex 由父组件通过 style 属性传入 */
 }
 
 .conversation-area-header {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAppStore } from '../../store/store';
 import Sidebar from '../Sidebar/Sidebar';
 import ConversationArea from '../ConversationArea/ConversationArea';
@@ -11,6 +11,11 @@ const Layout = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'conversation' | 'preview'
   const [showToggle, setShowToggle] = useState(false);
+  
+  // 拖拽调整大小相关状态
+  const [conversationWidth, setConversationWidth] = useState(50); // 百分比
+  const [isResizing, setIsResizing] = useState(false);
+  const layoutMainRef = useRef(null);
 
   useEffect(() => {
     const checkWidth = () => {
@@ -47,6 +52,48 @@ const Layout = () => {
 
     checkAuth();
   }, [token, loginUser]);
+
+  // 拖拽调整大小事件处理
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  const handleResizeMove = useCallback((e) => {
+    if (!isResizing || !layoutMainRef.current) return;
+    
+    const rect = layoutMainRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = (x / rect.width) * 100;
+    
+    // 限制最小和最大宽度
+    const minWidth = 25; // 最小25%
+    const maxWidth = 75; // 最大75%
+    const clampedPercentage = Math.max(minWidth, Math.min(maxWidth, percentage));
+    
+    setConversationWidth(clampedPercentage);
+  }, [isResizing]);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  // 添加/移除拖拽事件监听
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, [isResizing, handleResizeMove, handleResizeEnd]);
 
   // 页面关闭前自动保存
   useEffect(() => {
@@ -136,14 +183,29 @@ const Layout = () => {
   return (
     <div className="layout">
       <Sidebar />
-      <div className={`layout-main ${viewMode === 'preview' ? 'preview-active' : ''}`}>
+      <div 
+        ref={layoutMainRef}
+        className={`layout-main ${viewMode === 'preview' ? 'preview-active' : ''} ${isResizing ? 'resizing' : ''}`}
+      >
         {viewMode !== 'preview' && (
-          <ConversationArea 
-            showPreviewToggle={showToggle}
-            onPreviewToggle={handlePreviewToggle}
-          />
+          <>
+            <ConversationArea 
+              showPreviewToggle={showToggle}
+              onPreviewToggle={handlePreviewToggle}
+              width={conversationWidth}
+            />
+            {viewMode === 'split' && !showToggle && (
+              <div 
+                className="layout-resize-handle"
+                onMouseDown={handleResizeStart}
+                title="拖动调整宽度"
+              >
+                <div className="layout-resize-indicator"></div>
+              </div>
+            )}
+          </>
         )}
-        {viewMode === 'split' && <PreviewArea />}
+        {viewMode === 'split' && <PreviewArea width={100 - conversationWidth} />}
         {viewMode === 'preview' && (
           <PreviewArea 
             showBackButton={showToggle}

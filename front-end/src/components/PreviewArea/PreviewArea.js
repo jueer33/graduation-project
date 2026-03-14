@@ -7,7 +7,7 @@ import Placeholder from '../Placeholder/Placeholder';
 import { historyAPI } from '../../services/api';
 import './PreviewArea.css';
 
-const PreviewArea = ({ showBackButton, onBack }) => {
+const PreviewArea = ({ showBackButton, onBack, width }) => {
   const {
     previewState,
     currentDesignJson,
@@ -158,7 +158,10 @@ const PreviewArea = ({ showBackButton, onBack }) => {
   };
 
   return (
-    <div className="preview-area">
+    <div 
+      className="preview-area"
+      style={width ? { flex: `0 0 ${width}%` } : { flex: 1 }}
+    >
       {showBackButton && (
         <div className="preview-toggle-bar">
           <button

@@ -37,7 +37,10 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (email, password) => api.post('/auth/register', { email, password }),
   login: (email, password) => api.post('/auth/login', { email, password }),
-  getMe: () => api.get('/auth/me')
+  getMe: () => api.get('/auth/me'),
+  uploadAvatar: (formData) => api.post('/auth/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 };
 
 // AI相关接口

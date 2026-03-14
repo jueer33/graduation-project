@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/store';
 import { historyAPI } from '../../services/api';
 import SidebarHistory from './SidebarHistory';
@@ -12,8 +12,10 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
-  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode } = useAppStore();
+  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, loginUser, token, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode } = useAppStore();
   const [isAutoCollapsed, setIsAutoCollapsed] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -29,8 +31,55 @@ const Sidebar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [setSidebarCollapsed]);
 
+  // 点击外部关闭用户菜单
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  // 头像上传处理
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件');
+      return;
+    }
+    
+    // 检查文件大小（最大5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      alert('图片大小不能超过5MB');
+      return;
+    }
+    
+    // 创建FormData
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    try {
+      // 调用API上传头像
+      const { authAPI } = require('../../services/api');
+      const response = await authAPI.uploadAvatar(formData);
+      if (response.success) {
+        // 更新本地用户状态
+        loginUser({ ...user, avatar: response.avatarUrl }, token);
+      }
+    } catch (error) {
+      console.error('头像上传失败:', error);
+      alert('头像上传失败，请重试');
+    }
+    setShowUserMenu(false);
   };
 
   const handleMenuClick = async (moduleId) => {
@@ -125,17 +174,62 @@ const Sidebar = () => {
       {!collapsed && <SidebarHistory />}
 
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          {!collapsed && user && (
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-email">{user.email}</div>
+        <div className="sidebar-user-wrapper" ref={userMenuRef}>
+          {collapsed ? (
+            // 折叠状态：只显示头像
+            <button 
+              className="sidebar-avatar-btn" 
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              title={user?.email || '用户菜单'}
+            >
+              {user?.avatar ? (
+                <img src={user.avatar} alt="avatar" className="sidebar-avatar-img" />
+              ) : (
+                <div className="sidebar-avatar-default">
+                  {user?.email?.charAt(0).toUpperCase() || '👤'}
+                </div>
+              )}
+            </button>
+          ) : (
+            // 展开状态：显示用户头像和邮箱，点击头像弹出菜单
+            <div className="sidebar-user-expanded">
+              <button 
+                className="sidebar-avatar-btn" 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                title={user?.email || '用户菜单'}
+              >
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="sidebar-avatar-img" />
+                ) : (
+                  <div className="sidebar-avatar-default">
+                    {user?.email?.charAt(0).toUpperCase() || '👤'}
+                  </div>
+                )}
+              </button>
+              <div className="sidebar-user-info" onClick={() => setShowUserMenu(!showUserMenu)}>
+                <div className="sidebar-user-email">{user?.email}</div>
+              </div>
+            </div>
+          )}
+          
+          {/* 用户菜单弹窗 */}
+          {showUserMenu && (
+            <div className={`sidebar-user-menu ${collapsed ? 'collapsed' : 'expanded'}`}>
+              <label className="sidebar-menu-item">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleAvatarUpload}
+                  style={{ display: 'none' }}
+                />
+                <span>📷 上传头像</span>
+              </label>
+              <button className="sidebar-menu-item" onClick={logoutUser}>
+                <span>🚪 登出</span>
+              </button>
             </div>
           )}
         </div>
-        <button className="sidebar-item" onClick={logoutUser} title={collapsed ? '登出' : ''}>
-          <span className="sidebar-icon">🚪</span>
-          {!collapsed && <span className="sidebar-text">登出</span>}
-        </button>
       </div>
     </div>
   );

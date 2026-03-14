@@ -159,3 +159,85 @@
     padding: 10px;
   }
 }
+
+/* 拖拽相关样式 */
+
+/* 正在拖拽的节点 */
+.design-node.dragging {
+  opacity: 0.5;
+  outline: 2px dashed #1890ff !important;
+}
+
+/* 放置目标 - 之前（垂直布局 - 上方） */
+.design-node.drop-target-before {
+  position: relative;
+}
+
+.design-node.drop-target-before::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #1890ff;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+/* 放置目标 - 之后（垂直布局 - 下方） */
+.design-node.drop-target-after {
+  position: relative;
+}
+
+.design-node.drop-target-after::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #1890ff;
+  border-radius: 2px;
+  z-index: 100;
+}
+
+/* 水平布局时的左右指示器 */
+.design-node.drop-target-row.drop-target-before::before {
+  top: 0;
+  left: -2px;
+  bottom: 0;
+  right: auto;
+  width: 4px;
+  height: 100%;
+}
+
+.design-node.drop-target-row.drop-target-after::after {
+  top: 0;
+  left: auto;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  height: 100%;
+}
+
+/* 放置目标 - 内部 */
+.design-node.drop-target-inside {
+  outline: 3px solid #1890ff !important;
+  outline-offset: 2px;
+  background-color: rgba(24, 144, 255, 0.05);
+}
+
+/* 可拖拽时的光标 */
+.design-renderer-editable .design-node[draggable="true"] {
+  cursor: grab;
+}
+
+.design-renderer-editable .design-node[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* 拖拽时的禁用文本选择 */
+.design-renderer.dragging {
+  user-select: none;
+}

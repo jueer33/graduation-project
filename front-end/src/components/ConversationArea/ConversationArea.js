@@ -6,7 +6,7 @@ import ImageToDesign from '../Modules/ImageToDesign/ImageToDesign';
 import DesignToCode from '../Modules/DesignToCode/DesignToCode';
 import './ConversationArea.css';
 
-const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
+const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
   const {
     currentModule,
     clearConversations,
@@ -117,7 +117,10 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
   };
 
   return (
-    <div className="conversation-area">
+    <div 
+      className="conversation-area"
+      style={width ? { flex: `0 0 ${width}%` } : { flex: 1 }}
+    >
       <div className="conversation-area-header">
         <button
           className="new-conversation-btn"

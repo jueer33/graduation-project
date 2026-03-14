@@ -13,6 +13,41 @@
   position: relative;
 }
 
+.layout-main.resizing {
+  cursor: col-resize;
+}
+
+/* 可拖拽分割线 */
+.layout-resize-handle {
+  width: 8px;
+  background: transparent;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.layout-resize-handle:hover,
+.layout-main.resizing .layout-resize-handle {
+  background: var(--primary-light);
+}
+
+.layout-resize-indicator {
+  width: 2px;
+  height: 40px;
+  background: var(--border-primary);
+  border-radius: 1px;
+  transition: background-color 0.2s;
+}
+
+.layout-resize-handle:hover .layout-resize-indicator,
+.layout-main.resizing .layout-resize-indicator {
+  background: var(--primary);
+}
+
 .loading-container {
   width: 100%;
   height: 100vh;
