@@ -362,7 +362,7 @@ const VisualEditor = ({
         {/* 左侧组件库 */}
         <div className="visual-editor-sidebar">
           <div className="sidebar-section">
-            <h3 className="sidebar-title">组件库</h3>
+            <h3 className="sidebar-title-component">组件库</h3>
             <div className="component-list">
               <div className="component-item" onClick={() => handleAddComponent('container')}>
                 <span className="component-icon">📦</span>
