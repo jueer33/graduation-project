@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/store';
+import { historyAPI } from '../../services/api';
 import SidebarHistory from './SidebarHistory';
 import './Sidebar.css';
 import './SidebarHistory.css';
@@ -11,7 +12,7 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
-  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser } = useAppStore();
+  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode } = useAppStore();
   const [isAutoCollapsed, setIsAutoCollapsed] = useState(false);
 
   useEffect(() => {
@@ -32,11 +33,61 @@ const Sidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const handleMenuClick = (moduleId) => {
+  const handleMenuClick = async (moduleId) => {
+    // 如果切换到不同模块，先保存当前对话
+    if (moduleId !== currentModule) {
+      await saveCurrentConversation();
+    }
+
     setCurrentModule(moduleId);
     if (isAutoCollapsed) {
       setSidebarCollapsed(true);
     }
+  };
+
+  // 保存当前对话的函数
+  const saveCurrentConversation = async () => {
+    const currentConversations = getCurrentConversations();
+    const hasContent = currentConversations.length > 0 || currentDesignJson || currentCode;
+
+    if (!hasContent) return;
+
+    // 获取第一个用户消息作为userInput
+    const firstUserMessage = currentConversations.find(m => m.type === 'user');
+    const userInput = firstUserMessage?.content || (firstUserMessage?.image ? '上传图片' : '未命名对话');
+
+    const saveData = {
+      moduleType: currentModule,
+      userInput: userInput,
+      conversations: currentConversations,
+      designJson: currentDesignJson,
+      generatedCode: currentCode,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (currentHistoryId) {
+      // 更新现有历史记录
+      try {
+        await historyAPI.update(currentHistoryId, saveData);
+        console.log('切换模块前保存历史记录:', currentHistoryId);
+      } catch (error) {
+        console.error('切换模块前保存历史记录失败:', error);
+      }
+    } else {
+      // 创建新历史记录
+      try {
+        const response = await historyAPI.create(saveData);
+        if (response.success && response.data._id) {
+          console.log('切换模块前创建历史记录:', response.data._id);
+          addHistory(response.data, currentModule);
+        }
+      } catch (error) {
+        console.error('切换模块前创建历史记录失败:', error);
+      }
+    }
+
+    // 重置修改标记
+    resetDesignModified();
   };
 
   const collapsed = sidebarCollapsed || isAutoCollapsed;

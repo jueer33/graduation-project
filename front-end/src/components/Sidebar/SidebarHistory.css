@@ -41,6 +41,23 @@
   border-left-color: var(--primary);
 }
 
+/* 历史记录项 - 选中状态 */
+.sidebar-history-item.active {
+  background-color: var(--bg-active, rgba(24, 144, 255, 0.1));
+  border-left-color: var(--primary, #1890ff);
+}
+
+.sidebar-history-item.active .sidebar-history-time {
+  color: var(--primary, #1890ff);
+  font-weight: 500;
+}
+
+/* 确保active状态优先级高于hover */
+.sidebar-history-item.active:hover {
+  background-color: var(--bg-active-hover, rgba(24, 144, 255, 0.15));
+  border-left-color: var(--primary, #1890ff);
+}
+
 .sidebar-history-content {
   flex: 1;
   min-width: 0;

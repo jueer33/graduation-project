@@ -4,11 +4,12 @@ import { historyAPI } from '../../../services/api';
 import './History.css';
 
 const History = () => {
-  const { 
+  const {
     setCurrentDesignJson,
     setCurrentCode,
     setPreviewState,
-    setCurrentModule 
+    setCurrentModule,
+    currentHistoryId
   } = useAppStore();
   
   const [histories, setHistories] = useState([]);
@@ -64,8 +65,7 @@ const History = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('确定要删除这条历史记录吗？')) return;
-    
+    // 直接删除，不弹出确认提示
     try {
       await historyAPI.delete(id);
       setHistories(prev => prev.filter(h => h._id !== id));
@@ -97,7 +97,7 @@ const History = () => {
           <div className="history-empty">暂无历史记录</div>
         ) : (
           histories.map(history => (
-            <div key={history._id} className="history-item">
+            <div key={history._id} className={`history-item ${history._id === currentHistoryId ? 'active' : ''}`}>
               <div className="history-info">
                 <div className="history-title">{getModuleName(history.moduleType)}</div>
                 <div className="history-meta">

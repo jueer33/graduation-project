@@ -7,9 +7,9 @@ import DesignToCode from '../Modules/DesignToCode/DesignToCode';
 import './ConversationArea.css';
 
 const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
-  const { 
-    currentModule, 
-    clearConversations, 
+  const {
+    currentModule,
+    clearConversations,
     getCurrentConversations,
     currentDesignJson,
     currentCode,
@@ -18,15 +18,18 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
     setCurrentCode,
     setPreviewState,
     addHistory,
-    removeHistory
+    removeHistory,
+    currentHistoryId,
+    setCurrentHistoryId
   } = useAppStore();
 
   const handleNewConversation = async () => {
     const conversations = getCurrentConversations();
     const hasContent = conversations.length > 0 || currentDesignJson || currentCode;
-    
+
     if (!hasContent) {
       clearConversations();
+      setCurrentHistoryId(null);
       return;
     }
 
@@ -34,15 +37,15 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
       // 保存当前对话为历史记录
       // 获取第一个用户消息作为userInput
       const firstUserMessage = conversations.find(m => m.type === 'user');
-      const userInput = firstUserMessage?.content || 
+      const userInput = firstUserMessage?.content ||
                        (firstUserMessage?.image ? '上传图片' : '');
-      
+
       // 确定framework
       let framework = null;
       if (currentCode && currentCode.type) {
         framework = currentCode.type;
       }
-      
+
       const saveData = {
         moduleType: currentModule,
         userInput: userInput,
@@ -51,38 +54,52 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle }) => {
         generatedCode: currentCode,
         framework: framework
       };
-      
-      // 先更新前端状态
-      const newHistory = {
-        ...saveData,
-        _id: `temp_${Date.now()}`,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      addHistory(newHistory, currentModule);
-      
-      // 然后同步到后端
-      try {
-        const response = await historyAPI.create(saveData);
-        if (response.success && response.data) {
-          // 更新为真实的ID
-          removeHistory(newHistory._id, currentModule);
-          addHistory(response.data, currentModule);
+
+      // 如果有历史记录ID，更新原有记录；否则创建新记录
+      if (currentHistoryId) {
+        // 更新现有历史记录
+        try {
+          await historyAPI.update(currentHistoryId, saveData);
+          console.log('历史记录已更新:', currentHistoryId);
+        } catch (error) {
+          console.error('更新历史记录失败:', error);
         }
-      } catch (error) {
-        console.error('保存历史记录失败:', error);
-        // 如果后端保存失败，移除前端临时记录
-        removeHistory(newHistory._id, currentModule);
+      } else {
+        // 创建新历史记录
+        // 先更新前端状态
+        const newHistory = {
+          ...saveData,
+          _id: `temp_${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        addHistory(newHistory, currentModule);
+
+        // 然后同步到后端
+        try {
+          const response = await historyAPI.create(saveData);
+          if (response.success && response.data) {
+            // 更新为真实的ID
+            removeHistory(newHistory._id, currentModule);
+            addHistory(response.data, currentModule);
+          }
+        } catch (error) {
+          console.error('保存历史记录失败:', error);
+          // 如果后端保存失败，移除前端临时记录
+          removeHistory(newHistory._id, currentModule);
+        }
       }
-      
+
       // 清空当前对话和预览内容
       clearConversations();
       setCurrentDesignJson(null);
       setCurrentCode(null);
       setPreviewState('hidden');
+      setCurrentHistoryId(null);
     } catch (error) {
       console.error('新建对话失败:', error);
       clearConversations();
+      setCurrentHistoryId(null);
     }
   };
 

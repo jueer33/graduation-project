@@ -7,7 +7,7 @@ import Login from '../Auth/Login';
 import './Layout.css';
 
 const Layout = () => {
-  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified } = useAppStore();
+  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified, getCurrentConversations, currentModule, currentCode } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'conversation' | 'preview'
   const [showToggle, setShowToggle] = useState(false);
@@ -48,21 +48,74 @@ const Layout = () => {
     checkAuth();
   }, [token, loginUser]);
 
-  // 页面关闭前提示保存
+  // 页面关闭前自动保存
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // 如果设计稿被修改过（无论是否有历史记录ID），提示用户
-      if (isDesignModified) {
-        // 标准的浏览器提示方式
-        const message = '您有未保存的设计稿，确定要离开吗？';
-        e.returnValue = message; // 兼容旧版浏览器
-        return message;
+      const currentConversations = getCurrentConversations();
+      const hasContent = currentConversations.length > 0 || currentDesignJson || currentCode;
+
+      // 如果有内容，尝试自动保存
+      if (hasContent) {
+        // 获取第一个用户消息作为userInput
+        const firstUserMessage = currentConversations.find(m => m.type === 'user');
+        const userInput = firstUserMessage?.content || (firstUserMessage?.image ? '上传图片' : '未命名对话');
+
+        if (currentHistoryId) {
+          // 更新现有历史记录
+          const data = {
+            designJson: currentDesignJson,
+            generatedCode: currentCode,
+            conversations: currentConversations,
+            updatedAt: new Date().toISOString()
+          };
+
+          try {
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(
+              `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history/${currentHistoryId}`,
+              blob
+            );
+            console.log('页面关闭前更新历史记录:', currentHistoryId);
+            return;
+          } catch (error) {
+            console.error('自动保存失败:', error);
+          }
+        } else {
+          // 创建新历史记录
+          const createData = {
+            moduleType: currentModule,
+            userInput: userInput,
+            designJson: currentDesignJson,
+            generatedCode: currentCode,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          };
+
+          try {
+            const blob = new Blob([JSON.stringify(createData)], { type: 'application/json' });
+            navigator.sendBeacon(
+              `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history`,
+              blob
+            );
+            console.log('页面关闭前创建历史记录');
+            return;
+          } catch (error) {
+            console.error('自动保存失败:', error);
+          }
+        }
+
+        // 如果无法自动保存且设计稿被修改过，提示用户
+        if (isDesignModified) {
+          const message = '您有未保存的设计稿，确定要离开吗？';
+          e.returnValue = message;
+          return message;
+        }
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDesignModified]);
+  }, [isDesignModified, currentHistoryId, currentDesignJson, currentModule, currentCode]);
 
   if (loading) {
     return (

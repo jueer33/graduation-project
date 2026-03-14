@@ -4,7 +4,7 @@ import { historyAPI } from '../../services/api';
 import './SidebarHistory.css';
 
 const SidebarHistory = () => {
-  const { 
+  const {
     currentModule,
     setCurrentModule,
     setCurrentDesignJson,
@@ -15,7 +15,13 @@ const SidebarHistory = () => {
     getCurrentHistories,
     setHistoriesForModule,
     removeHistory,
-    setCurrentHistoryId
+    setCurrentHistoryId,
+    currentHistoryId,
+    currentDesignJson,
+    getCurrentConversations,
+    isDesignModified,
+    resetDesignModified,
+    addHistory
   } = useAppStore();
   
   const [loading, setLoading] = useState(false);
@@ -44,6 +50,50 @@ const SidebarHistory = () => {
 
   const handleRestore = async (history) => {
     try {
+      // 1. 先保存当前对话（如果有内容）
+      const currentConversations = getCurrentConversations();
+      const hasContent = currentConversations.length > 0 || currentDesignJson;
+
+      if (hasContent) {
+        // 获取第一个用户消息作为userInput
+        const firstUserMessage = currentConversations.find(m => m.type === 'user');
+        const userInput = firstUserMessage?.content || (firstUserMessage?.image ? '上传图片' : '未命名对话');
+
+        const saveData = {
+          moduleType: currentModule,
+          userInput: userInput,
+          conversations: currentConversations,
+          designJson: currentDesignJson,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (currentHistoryId) {
+          // 更新现有历史记录
+          try {
+            await historyAPI.update(currentHistoryId, saveData);
+            console.log('当前历史记录已保存:', currentHistoryId);
+          } catch (error) {
+            console.error('保存当前历史记录失败:', error);
+          }
+        } else {
+          // 创建新历史记录
+          try {
+            const response = await historyAPI.create(saveData);
+            if (response.success && response.data._id) {
+              console.log('新历史记录已创建:', response.data._id);
+              // 更新前端列表
+              addHistory(response.data, currentModule);
+            }
+          } catch (error) {
+            console.error('创建历史记录失败:', error);
+          }
+        }
+
+        // 重置修改标记
+        resetDesignModified();
+      }
+
+      // 2. 获取要恢复的历史记录详情
       const detailResponse = await historyAPI.getDetail(history._id);
       if (detailResponse.success) {
         const detail = detailResponse.data;
@@ -77,6 +127,9 @@ const SidebarHistory = () => {
           setCurrentCode(null);
           setPreviewState('hidden');
         }
+
+        // 重置修改标记
+        resetDesignModified();
       }
     } catch (error) {
       console.error('恢复历史记录失败:', error);
@@ -85,8 +138,8 @@ const SidebarHistory = () => {
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm('确定要删除这条历史记录吗？')) return;
-    
+    // 直接删除，不弹出确认提示
+
     // 先更新前端状态
     removeHistory(id, currentModule);
     
@@ -145,7 +198,7 @@ const SidebarHistory = () => {
           histories.slice(0, 5).map(history => (
             <div
               key={history._id}
-              className="sidebar-history-item"
+              className={`sidebar-history-item ${history._id === currentHistoryId ? 'active' : ''}`}
               onClick={() => handleRestore(history)}
               onMouseEnter={() => setHoveredId(history._id)}
               onMouseLeave={() => setHoveredId(null)}

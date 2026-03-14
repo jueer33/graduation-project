@@ -14,7 +14,8 @@ const ImageToDesign = () => {
     currentModule,
     setCurrentHistoryId,
     currentHistoryId,
-    currentDesignJson
+    currentDesignJson,
+    addHistory
   } = useAppStore();
 
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,8 @@ const ImageToDesign = () => {
   const conversationsRef = useRef(conversations);
   const currentHistoryIdRef = useRef(currentHistoryId);
   const currentDesignJsonRef = useRef(currentDesignJson);
+  // 标记是否刚刚创建了历史记录，避免beforeunload重复创建
+  const justCreatedRef = useRef(false);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -40,6 +43,11 @@ const ImageToDesign = () => {
   // 刷新时自动保存对话内容
   useEffect(() => {
     const syncBeforeUnload = () => {
+      // 如果刚刚创建了历史记录，不再重复创建
+      if (justCreatedRef.current) {
+        return;
+      }
+
       const currentConversations = conversationsRef.current;
       const historyId = currentHistoryIdRef.current;
       const designJson = currentDesignJsonRef.current;
@@ -133,7 +141,6 @@ const ImageToDesign = () => {
           addConversation(designMessage, currentModule);
 
           const currentConversations = getCurrentConversations();
-          setCurrentHistoryId(null);
 
           const historyData = {
             moduleType: currentModule,
@@ -143,10 +150,41 @@ const ImageToDesign = () => {
             createdAt: new Date().toISOString()
           };
 
-          const historyResponse = await historyAPI.create(historyData);
-          if (historyResponse.success && historyResponse.data._id) {
-            setCurrentHistoryId(historyResponse.data._id);
+          // 标记即将创建/更新历史记录，避免beforeunload重复操作
+          justCreatedRef.current = true;
+
+          // 如果有历史记录ID，更新原有记录；否则创建新记录
+          if (currentHistoryId) {
+            try {
+              await historyAPI.update(currentHistoryId, historyData);
+              console.log('历史记录已更新:', currentHistoryId);
+              const updatedHistory = {
+                ...historyData,
+                _id: currentHistoryId,
+                updatedAt: new Date().toISOString()
+              };
+              addHistory(updatedHistory, currentModule);
+            } catch (error) {
+              console.error('更新历史记录失败:', error);
+            }
+          } else {
+            const historyResponse = await historyAPI.create(historyData);
+            if (historyResponse.success && historyResponse.data._id) {
+              setCurrentHistoryId(historyResponse.data._id);
+              const newHistory = {
+                ...historyResponse.data,
+                userInput: text || '图片上传',
+                moduleType: currentModule,
+                createdAt: new Date().toISOString()
+              };
+              addHistory(newHistory, currentModule);
+            }
           }
+
+          // 3秒后重置标记，允许后续的beforeunload保存
+          setTimeout(() => {
+            justCreatedRef.current = false;
+          }, 3000);
         }
       } else if (text.trim()) {
         const response = await aiAPI.textToDesign(text);
@@ -162,7 +200,6 @@ const ImageToDesign = () => {
           addConversation(designMessage, currentModule);
 
           const currentConversations = getCurrentConversations();
-          setCurrentHistoryId(null);
 
           const historyData = {
             moduleType: currentModule,
@@ -172,10 +209,41 @@ const ImageToDesign = () => {
             createdAt: new Date().toISOString()
           };
 
-          const historyResponse = await historyAPI.create(historyData);
-          if (historyResponse.success && historyResponse.data._id) {
-            setCurrentHistoryId(historyResponse.data._id);
+          // 标记即将创建/更新历史记录，避免beforeunload重复操作
+          justCreatedRef.current = true;
+
+          // 如果有历史记录ID，更新原有记录；否则创建新记录
+          if (currentHistoryId) {
+            try {
+              await historyAPI.update(currentHistoryId, historyData);
+              console.log('历史记录已更新:', currentHistoryId);
+              const updatedHistory = {
+                ...historyData,
+                _id: currentHistoryId,
+                updatedAt: new Date().toISOString()
+              };
+              addHistory(updatedHistory, currentModule);
+            } catch (error) {
+              console.error('更新历史记录失败:', error);
+            }
+          } else {
+            const historyResponse = await historyAPI.create(historyData);
+            if (historyResponse.success && historyResponse.data._id) {
+              setCurrentHistoryId(historyResponse.data._id);
+              const newHistory = {
+                ...historyResponse.data,
+                userInput: text,
+                moduleType: currentModule,
+                createdAt: new Date().toISOString()
+              };
+              addHistory(newHistory, currentModule);
+            }
           }
+
+          // 3秒后重置标记，允许后续的beforeunload保存
+          setTimeout(() => {
+            justCreatedRef.current = false;
+          }, 3000);
         }
       }
     } catch (error) {

@@ -48,6 +48,20 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* 历史记录项 - 选中状态 */
+.history-item.active {
+  background-color: var(--bg-active, rgba(24, 144, 255, 0.1));
+  border-color: var(--primary, #1890ff);
+}
+
+.history-item.active .history-meta {
+  color: var(--primary, #1890ff);
+}
+
+.history-item.active:hover {
+  background-color: var(--bg-active-hover, rgba(24, 144, 255, 0.15));
+}
+
 .history-info {
   flex: 1;
   min-width: 0;

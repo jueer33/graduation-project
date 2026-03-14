@@ -14,7 +14,8 @@ const TextToDesign = () => {
     currentModule,
     setCurrentHistoryId,
     currentHistoryId,
-    currentDesignJson
+    currentDesignJson,
+    addHistory
   } = useAppStore();
 
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,8 @@ const TextToDesign = () => {
   const conversationsRef = useRef(conversations);
   const currentHistoryIdRef = useRef(currentHistoryId);
   const currentDesignJsonRef = useRef(currentDesignJson);
+  // 标记是否刚刚创建了历史记录，避免beforeunload重复创建
+  const justCreatedRef = useRef(false);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -75,6 +78,11 @@ const TextToDesign = () => {
   useEffect(() => {
     // 使用同步的beforeunload处理，确保数据被保存
     const syncBeforeUnload = (e) => {
+      // 如果刚刚创建了历史记录，不再重复创建
+      if (justCreatedRef.current) {
+        return;
+      }
+
       // 注意：这里不能直接使用async函数，因为beforeunload需要同步执行
       // 我们使用sendBeacon来发送数据，或者使用同步的XHR
       const currentConversations = conversationsRef.current;
@@ -158,10 +166,7 @@ const TextToDesign = () => {
         // 获取当前对话内容（包含用户输入和设计稿消息）
         const currentConversations = getCurrentConversations();
 
-        // 清除当前历史记录ID（因为这是新的设计）
-        setCurrentHistoryId(null);
-
-        // 创建历史记录，同时保存对话内容和设计稿
+        // 准备历史记录数据
         const historyData = {
           moduleType: currentModule,
           userInput: text,
@@ -170,12 +175,50 @@ const TextToDesign = () => {
           createdAt: new Date().toISOString()
         };
 
-        const historyResponse = await historyAPI.create(historyData);
-        if (historyResponse.success && historyResponse.data._id) {
-          // 设置当前历史记录ID
-          setCurrentHistoryId(historyResponse.data._id);
-          console.log('新历史记录已创建（包含对话内容和设计稿）:', historyResponse.data._id);
+        // 标记即将创建/更新历史记录，避免beforeunload重复操作
+        justCreatedRef.current = true;
+
+        // 如果有历史记录ID，更新原有记录；否则创建新记录
+        if (currentHistoryId) {
+          // 更新现有历史记录
+          try {
+            await historyAPI.update(currentHistoryId, historyData);
+            console.log('历史记录已更新:', currentHistoryId);
+
+            // 更新前端历史记录列表中的对应项
+            const updatedHistory = {
+              ...historyData,
+              _id: currentHistoryId,
+              updatedAt: new Date().toISOString()
+            };
+            addHistory(updatedHistory, currentModule);
+          } catch (error) {
+            console.error('更新历史记录失败:', error);
+          }
+        } else {
+          // 创建新历史记录
+          const historyResponse = await historyAPI.create(historyData);
+          if (historyResponse.success && historyResponse.data._id) {
+            // 设置当前历史记录ID
+            setCurrentHistoryId(historyResponse.data._id);
+
+            // 立即将新记录添加到历史记录列表（前端状态）
+            const newHistory = {
+              ...historyResponse.data,
+              userInput: text,
+              moduleType: currentModule,
+              createdAt: new Date().toISOString()
+            };
+            addHistory(newHistory, currentModule);
+
+            console.log('新历史记录已创建并添加到列表:', historyResponse.data._id);
+          }
         }
+
+        // 3秒后重置标记，允许后续的beforeunload保存
+        setTimeout(() => {
+          justCreatedRef.current = false;
+        }, 3000);
       }
     } catch (error) {
       const errorMessage = {
