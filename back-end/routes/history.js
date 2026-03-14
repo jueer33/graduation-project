@@ -84,8 +84,39 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// 更新历史记录
+// 更新历史记录 (PUT)
 router.put('/:id', auth, async (req, res) => {
+  try {
+    const { designJson, generatedCode, userInput, conversations } = req.body;
+
+    const history = await History.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!history) {
+      return res.status(404).json({ message: '历史记录不存在' });
+    }
+
+    if (designJson !== undefined) history.designJson = designJson;
+    if (generatedCode !== undefined) history.generatedCode = generatedCode;
+    if (userInput !== undefined) history.userInput = userInput;
+    if (conversations !== undefined) history.conversations = conversations;
+    history.updatedAt = new Date();
+
+    await history.save();
+
+    res.json({
+      success: true,
+      data: history
+    });
+  } catch (error) {
+    res.status(500).json({ message: '更新历史记录失败', error: error.message });
+  }
+});
+
+// 更新历史记录 (POST - 用于sendBeacon)
+router.post('/:id', auth, async (req, res) => {
   try {
     const { designJson, generatedCode, userInput, conversations } = req.body;
 

@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #f0f2f5;
+  background-color: var(--bg-secondary);
 }
 
 /* 顶部工具栏 */
@@ -11,9 +11,9 @@
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e8e8e8;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .toolbar-group {
@@ -26,18 +26,18 @@
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  background-color: #ffffff;
-  color: #333333;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  border-color: #1890ff;
-  color: #1890ff;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .toolbar-btn:disabled {
@@ -46,38 +46,38 @@
 }
 
 .toolbar-btn.primary {
-  background-color: #1890ff;
-  border-color: #1890ff;
-  color: #ffffff;
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-inverse);
 }
 
 .toolbar-btn.primary:hover:not(:disabled) {
-  background-color: #40a9ff;
-  border-color: #40a9ff;
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .toolbar-btn.danger {
-  color: #ff4d4f;
-  border-color: #ff4d4f;
+  color: var(--error);
+  border-color: var(--error);
 }
 
 .toolbar-btn.danger:hover:not(:disabled) {
-  background-color: #ff4d4f;
-  color: #ffffff;
+  background-color: var(--error);
+  color: var(--text-inverse);
 }
 
 .toolbar-info {
   margin-left: auto;
   font-size: 13px;
-  color: #666666;
+  color: var(--text-secondary);
 }
 
 .selected-info {
   padding: 4px 8px;
-  background-color: #f6ffed;
-  border: 1px solid #b7eb8f;
-  border-radius: 4px;
-  color: #52c41a;
+  background-color: var(--primary-light);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-sm);
+  color: var(--success);
 }
 
 /* 主编辑区域 */
@@ -90,8 +90,8 @@
 /* 左侧组件库 */
 .visual-editor-sidebar {
   width: 200px;
-  background-color: #ffffff;
-  border-right: 1px solid #e8e8e8;
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-primary);
   overflow-y: auto;
 }
 
@@ -103,7 +103,7 @@
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333333;
+  color: var(--text-primary);
 }
 
 .component-list {
@@ -117,16 +117,16 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: #fafafa;
+  transition: var(--transition);
+  background-color: var(--bg-secondary);
 }
 
 .component-item:hover {
-  border-color: #1890ff;
-  background-color: #e6f7ff;
+  border-color: var(--primary);
+  background-color: var(--primary-light);
 }
 
 .component-icon {
@@ -135,7 +135,7 @@
 
 .component-name {
   font-size: 13px;
-  color: #333333;
+  color: var(--text-primary);
 }
 
 /* 中间画布区域 */
@@ -143,14 +143,14 @@
   flex: 1;
   overflow: auto;
   padding: 20px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-secondary);
 }
 
 /* 右侧属性面板 */
 .visual-editor-properties {
   width: 280px;
-  background-color: #ffffff;
-  border-left: 1px solid #e8e8e8;
+  background-color: var(--bg-primary);
+  border-left: 1px solid var(--border-primary);
   overflow-y: auto;
 }
 
@@ -162,9 +162,9 @@
   margin: 0 0 16px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333333;
+  color: var(--text-primary);
   padding-bottom: 12px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .properties-content {
@@ -179,7 +179,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  color: #999999;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
@@ -194,7 +194,7 @@
 
 /* 属性分区 */
 .property-section {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 16px;
 }
 
@@ -206,7 +206,7 @@
   margin: 0 0 12px 0;
   font-size: 12px;
   font-weight: 600;
-  color: #666666;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -224,7 +224,7 @@
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
-  color: #666666;
+  color: var(--text-secondary);
 }
 
 .property-field input[type="text"],
@@ -233,12 +233,12 @@
 .property-field select {
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
   font-size: 13px;
-  color: #333333;
-  background-color: #ffffff;
-  transition: all 0.2s ease;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition: var(--transition);
 }
 
 .property-field input[type="text"]:focus,
@@ -246,13 +246,13 @@
 .property-field textarea:focus,
 .property-field select:focus {
   outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
 .property-field input:disabled {
-  background-color: #f5f5f5;
-  color: #999999;
+  background-color: var(--bg-secondary);
+  color: var(--text-tertiary);
   cursor: not-allowed;
 }
 
@@ -272,9 +272,10 @@
   width: 40px;
   height: 32px;
   padding: 2px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  background-color: var(--bg-primary);
 }
 
 .color-input input[type="text"] {

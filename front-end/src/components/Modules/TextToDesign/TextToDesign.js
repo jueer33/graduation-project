@@ -1,22 +1,132 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from '../../../store/store';
-import { aiAPI } from '../../../services/api';
+import { aiAPI, historyAPI } from '../../../services/api';
 import MessageList from '../../MessageList/MessageList';
 import InputArea from '../../InputArea/InputArea';
 import './TextToDesign.css';
 
 const TextToDesign = () => {
-  const { 
-    setCurrentDesignJson, 
+  const {
+    setCurrentDesignJson,
     setPreviewState,
     addConversation,
     getCurrentConversations,
     currentModule,
-    setCurrentHistoryId
+    setCurrentHistoryId,
+    currentHistoryId,
+    currentDesignJson
   } = useAppStore();
-  
+
   const [loading, setLoading] = useState(false);
   const conversations = getCurrentConversations();
+
+  // 使用ref来存储最新的conversations，避免在beforeunload中读取到过期的闭包值
+  const conversationsRef = useRef(conversations);
+  const currentHistoryIdRef = useRef(currentHistoryId);
+  const currentDesignJsonRef = useRef(currentDesignJson);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    currentHistoryIdRef.current = currentHistoryId;
+  }, [currentHistoryId]);
+
+  useEffect(() => {
+    currentDesignJsonRef.current = currentDesignJson;
+  }, [currentDesignJson]);
+
+  // 刷新时自动保存对话内容
+  const handleBeforeUnload = useCallback(async (e) => {
+    const currentConversations = conversationsRef.current;
+    const historyId = currentHistoryIdRef.current;
+    const designJson = currentDesignJsonRef.current;
+
+    // 如果有对话内容
+    if (currentConversations && currentConversations.length > 0) {
+      try {
+        if (historyId) {
+          // 如果有历史记录ID，更新现有记录
+          await historyAPI.update(historyId, {
+            conversations: currentConversations,
+            designJson: designJson,
+            updatedAt: new Date().toISOString()
+          });
+          console.log('刷新时自动更新历史记录:', historyId);
+        } else if (designJson) {
+          // 如果没有历史记录ID但有设计稿，创建新记录
+          const userInput = currentConversations.find(m => m.type === 'user')?.content || '';
+          await historyAPI.create({
+            moduleType: currentModule,
+            userInput: userInput,
+            designJson: designJson,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          });
+          console.log('刷新时自动创建历史记录');
+        }
+      } catch (error) {
+        console.error('自动保存失败:', error);
+      }
+    }
+  }, [currentModule]);
+
+  useEffect(() => {
+    // 使用同步的beforeunload处理，确保数据被保存
+    const syncBeforeUnload = (e) => {
+      // 注意：这里不能直接使用async函数，因为beforeunload需要同步执行
+      // 我们使用sendBeacon来发送数据，或者使用同步的XHR
+      const currentConversations = conversationsRef.current;
+      const historyId = currentHistoryIdRef.current;
+      const designJson = currentDesignJsonRef.current;
+
+      if (currentConversations && currentConversations.length > 0) {
+        const data = {
+          conversations: currentConversations,
+          designJson: designJson,
+          updatedAt: new Date().toISOString()
+        };
+
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+
+        if (historyId) {
+          // 使用sendBeacon发送更新请求
+          navigator.sendBeacon(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history/${historyId}`,
+            blob
+          );
+        } else if (designJson) {
+          const userInput = currentConversations.find(m => m.type === 'user')?.content || '';
+          const createData = {
+            moduleType: currentModule,
+            userInput: userInput,
+            designJson: designJson,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          };
+          const createBlob = new Blob([JSON.stringify(createData)], { type: 'application/json' });
+          navigator.sendBeacon(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history`,
+            createBlob
+          );
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', syncBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', syncBeforeUnload);
+    };
+  }, [currentModule]);
+
+  // 处理预览设计稿
+  const handlePreviewDesign = (designJson, messageId) => {
+    // 设置当前设计稿到预览区
+    setCurrentDesignJson(designJson);
+    setPreviewState('design');
+    console.log('加载设计稿到预览区，消息ID:', messageId);
+  };
 
   const handleSubmit = async (text) => {
     if (!text.trim() || loading) return;
@@ -33,16 +143,39 @@ const TextToDesign = () => {
 
     try {
       const response = await aiAPI.textToDesign(text);
-      
+
       if (response.success && response.designJson) {
+        // 添加AI返回的设计稿消息到对话
+        const designMessage = {
+          id: Date.now() + 1,
+          type: 'design',
+          content: '已为您生成设计稿，点击下方按钮预览和编辑：',
+          designJson: response.designJson,
+          timestamp: new Date()
+        };
+        addConversation(designMessage, currentModule);
+
+        // 获取当前对话内容（包含用户输入和设计稿消息）
+        const currentConversations = getCurrentConversations();
+
         // 清除当前历史记录ID（因为这是新的设计）
         setCurrentHistoryId(null);
-        
-        // 更新Design JSON
-        setCurrentDesignJson(response.designJson);
-        setPreviewState('design');
-        
-        // 不添加AI消息到对话区（已在预览区显示）
+
+        // 创建历史记录，同时保存对话内容和设计稿
+        const historyData = {
+          moduleType: currentModule,
+          userInput: text,
+          designJson: response.designJson,
+          conversations: currentConversations,
+          createdAt: new Date().toISOString()
+        };
+
+        const historyResponse = await historyAPI.create(historyData);
+        if (historyResponse.success && historyResponse.data._id) {
+          // 设置当前历史记录ID
+          setCurrentHistoryId(historyResponse.data._id);
+          console.log('新历史记录已创建（包含对话内容和设计稿）:', historyResponse.data._id);
+        }
       }
     } catch (error) {
       const errorMessage = {
@@ -59,7 +192,7 @@ const TextToDesign = () => {
 
   return (
     <div className="text-to-design">
-      <MessageList messages={conversations} />
+      <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
       <InputArea
         onSubmit={handleSubmit}
         loading={loading}

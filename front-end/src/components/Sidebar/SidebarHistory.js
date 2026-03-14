@@ -47,30 +47,35 @@ const SidebarHistory = () => {
       const detailResponse = await historyAPI.getDetail(history._id);
       if (detailResponse.success) {
         const detail = detailResponse.data;
-        
+
         // 设置当前编辑的历史记录ID
         setCurrentHistoryId(history._id);
         console.log('设置当前历史记录ID:', history._id);
-        
+
         // 切换到对应的模块
         if (detail.moduleType) {
           setCurrentModule(detail.moduleType);
         }
-        
+
         // 恢复对话内容
         if (detail.conversations && detail.conversations.length > 0) {
           setConversationsForModule(detail.conversations, detail.moduleType || currentModule);
         }
-        
-        // 恢复预览内容
+
+        // 恢复设计稿到预览区
         if (detail.designJson) {
           setCurrentDesignJson(detail.designJson);
           setPreviewState('design');
-        }
-        
-        if (detail.generatedCode) {
+          console.log('设计稿已加载到预览区');
+        } else if (detail.generatedCode) {
           setCurrentCode(detail.generatedCode);
           setPreviewState('code');
+          console.log('代码已加载到预览区');
+        } else {
+          // 如果没有设计稿或代码，清空预览区
+          setCurrentDesignJson(null);
+          setCurrentCode(null);
+          setPreviewState('hidden');
         }
       }
     } catch (error) {

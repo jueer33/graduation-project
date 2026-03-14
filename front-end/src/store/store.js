@@ -129,6 +129,22 @@ export const AppProvider = ({ children }) => {
       };
     });
   }, [currentModule]);
+
+  // 更新特定消息中的 designJson（用于保存编辑后的设计稿）
+  const updateMessageDesignJson = useCallback((messageId, newDesignJson, moduleType) => {
+    setConversations(prev => {
+      const module = moduleType || currentModule;
+      const moduleConversations = prev[module] || [];
+      return {
+        ...prev,
+        [module]: moduleConversations.map(msg =>
+          msg.id === messageId && msg.type === 'design'
+            ? { ...msg, designJson: newDesignJson }
+            : msg
+        )
+      };
+    });
+  }, [currentModule]);
   
   // 获取当前模块的历史记录
   const getCurrentHistories = useCallback(() => {
@@ -201,6 +217,7 @@ export const AppProvider = ({ children }) => {
     clearConversations,
     getCurrentConversations,
     setConversationsForModule,
+    updateMessageDesignJson,
     getCurrentHistories,
     addHistory,
     removeHistory,

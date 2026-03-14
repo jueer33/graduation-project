@@ -1,22 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../store/store';
-import { aiAPI } from '../../../services/api';
+import { aiAPI, historyAPI } from '../../../services/api';
 import MessageList from '../../MessageList/MessageList';
 import InputArea from '../../InputArea/InputArea';
 import './ImageToDesign.css';
 
 const ImageToDesign = () => {
-  const { 
-    setCurrentDesignJson, 
+  const {
+    setCurrentDesignJson,
     setPreviewState,
     addConversation,
     getCurrentConversations,
     currentModule,
-    setCurrentHistoryId
+    setCurrentHistoryId,
+    currentHistoryId,
+    currentDesignJson
   } = useAppStore();
-  
+
   const [loading, setLoading] = useState(false);
   const conversations = getCurrentConversations();
+
+  // 使用ref来存储最新的状态，避免在beforeunload中读取到过期的闭包值
+  const conversationsRef = useRef(conversations);
+  const currentHistoryIdRef = useRef(currentHistoryId);
+  const currentDesignJsonRef = useRef(currentDesignJson);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    currentHistoryIdRef.current = currentHistoryId;
+  }, [currentHistoryId]);
+
+  useEffect(() => {
+    currentDesignJsonRef.current = currentDesignJson;
+  }, [currentDesignJson]);
+
+  // 刷新时自动保存对话内容
+  useEffect(() => {
+    const syncBeforeUnload = () => {
+      const currentConversations = conversationsRef.current;
+      const historyId = currentHistoryIdRef.current;
+      const designJson = currentDesignJsonRef.current;
+
+      if (currentConversations && currentConversations.length > 0) {
+        const data = {
+          conversations: currentConversations,
+          designJson: designJson,
+          updatedAt: new Date().toISOString()
+        };
+
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+
+        if (historyId) {
+          navigator.sendBeacon(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history/${historyId}`,
+            blob
+          );
+        } else if (designJson) {
+          const userInput = currentConversations.find(m => m.type === 'user')?.content || '';
+          const createData = {
+            moduleType: currentModule,
+            userInput: userInput,
+            designJson: designJson,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          };
+          const createBlob = new Blob([JSON.stringify(createData)], { type: 'application/json' });
+          navigator.sendBeacon(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/history`,
+            createBlob
+          );
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', syncBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', syncBeforeUnload);
+    };
+  }, [currentModule]);
+
+  // 处理预览设计稿
+  const handlePreviewDesign = (designJson, messageId) => {
+    setCurrentDesignJson(designJson);
+    setPreviewState('design');
+    console.log('加载设计稿到预览区，消息ID:', messageId);
+  };
 
   const handleSubmit = async (text, imageFile) => {
     if ((!text.trim() && !imageFile) || loading) return;
@@ -43,41 +114,68 @@ const ImageToDesign = () => {
       if (imageFile) {
         const formData = new FormData();
         formData.append('image', imageFile);
-        
-        // 如果有文字，也添加到formData
+
         if (text.trim()) {
           formData.append('text', text);
         }
 
         const response = await aiAPI.imageToDesign(formData);
-        
+
         if (response.success && response.designJson) {
-          // 清除当前历史记录ID（因为这是新的设计）
-          setCurrentHistoryId(null);
-          
-          // 更新Design JSON
-          setCurrentDesignJson(response.designJson);
-          setPreviewState('design');
-          
-          // 添加成功消息
-          const successMessage = {
+          // 添加设计稿消息到对话
+          const designMessage = {
             id: Date.now() + 1,
-            type: 'assistant',
-            content: '图片解析成功，设计稿已生成',
+            type: 'design',
+            content: '图片解析成功，已为您生成设计稿：',
+            designJson: response.designJson,
             timestamp: new Date()
           };
-          addConversation(successMessage, currentModule);
+          addConversation(designMessage, currentModule);
+
+          const currentConversations = getCurrentConversations();
+          setCurrentHistoryId(null);
+
+          const historyData = {
+            moduleType: currentModule,
+            userInput: text || '图片上传',
+            designJson: response.designJson,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          };
+
+          const historyResponse = await historyAPI.create(historyData);
+          if (historyResponse.success && historyResponse.data._id) {
+            setCurrentHistoryId(historyResponse.data._id);
+          }
         }
       } else if (text.trim()) {
-        // 如果只有文字没有图片，可以调用文本生成接口
         const response = await aiAPI.textToDesign(text);
-        
+
         if (response.success && response.designJson) {
-          // 清除当前历史记录ID（因为这是新的设计）
+          const designMessage = {
+            id: Date.now() + 1,
+            type: 'design',
+            content: '已为您生成设计稿，点击下方按钮预览和编辑：',
+            designJson: response.designJson,
+            timestamp: new Date()
+          };
+          addConversation(designMessage, currentModule);
+
+          const currentConversations = getCurrentConversations();
           setCurrentHistoryId(null);
-          
-          setCurrentDesignJson(response.designJson);
-          setPreviewState('design');
+
+          const historyData = {
+            moduleType: currentModule,
+            userInput: text,
+            designJson: response.designJson,
+            conversations: currentConversations,
+            createdAt: new Date().toISOString()
+          };
+
+          const historyResponse = await historyAPI.create(historyData);
+          if (historyResponse.success && historyResponse.data._id) {
+            setCurrentHistoryId(historyResponse.data._id);
+          }
         }
       }
     } catch (error) {
@@ -95,7 +193,7 @@ const ImageToDesign = () => {
 
   return (
     <div className="image-to-design">
-      <MessageList messages={conversations} />
+      <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
       <InputArea
         onSubmit={handleSubmit}
         loading={loading}
