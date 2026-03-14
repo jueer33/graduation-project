@@ -1,0 +1,105 @@
+.sidebar-history {
+  flex: 1;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-history-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.sidebar-history-list {
+  padding: var(--spacing-xs) 0;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sidebar-history-item {
+  position: relative;
+  padding: var(--spacing-xs) var(--spacing-md);
+  cursor: pointer;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-history-item:hover {
+  background-color: var(--bg-hover);
+  border-left-color: var(--primary);
+}
+
+.sidebar-history-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-history-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.sidebar-history-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.sidebar-history-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.sidebar-history-delete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background-color: var(--error);
+  color: var(--text-inverse);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  margin-left: var(--spacing-sm);
+}
+
+.sidebar-history-delete:hover {
+  background-color: var(--error);
+  opacity: 0.9;
+  transform: scale(1.1);
+}
+
+.sidebar-history-loading,
+.sidebar-history-empty {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}

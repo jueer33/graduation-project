@@ -1,0 +1,161 @@
+.design-renderer {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: #f5f5f5;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.design-renderer-editable {
+  cursor: default;
+}
+
+/* 空状态样式 */
+.design-renderer-empty,
+.design-renderer-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-icon,
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text,
+.error-text {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-hint,
+.error-hint {
+  font-size: 14px;
+  color: #bbb;
+}
+
+/* 节点基础样式 */
+.design-node {
+  position: relative;
+  transition: box-shadow 0.2s ease;
+}
+
+/* 可编辑模式下的悬停效果 */
+.design-renderer-editable .design-node:hover {
+  outline: 1px dashed #1890ff;
+  outline-offset: -1px;
+  cursor: pointer;
+}
+
+/* 选中状态 */
+.design-node-selected {
+  outline: 2px solid #1890ff !important;
+  outline-offset: -2px;
+}
+
+/* 页面节点 */
+.design-page {
+  min-height: 100%;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 容器节点 */
+.design-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 卡片节点 */
+.design-card {
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 文本节点 */
+.design-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 按钮节点 */
+.design-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background-color: #1890ff;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.design-button:hover {
+  opacity: 0.8;
+}
+
+.design-button:active {
+  opacity: 0.6;
+}
+
+/* 输入框节点 */
+.design-input {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.design-input:focus {
+  border-color: #1890ff;
+}
+
+.design-input::placeholder {
+  color: #bfbfbf;
+}
+
+/* 图片节点 */
+.design-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 分割线节点 */
+.design-divider {
+  width: 100%;
+  height: 1px;
+  background-color: #e8e8e8;
+}
+
+/* 图标节点 */
+.design-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 响应式布局支持 */
+@media (max-width: 768px) {
+  .design-renderer {
+    padding: 10px;
+  }
+}

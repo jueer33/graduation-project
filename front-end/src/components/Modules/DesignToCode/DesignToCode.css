@@ -1,0 +1,13 @@
+.design-to-code {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-generator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+

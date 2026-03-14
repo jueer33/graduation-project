@@ -1,0 +1,66 @@
+.image-upload {
+  width: 100%;
+  max-width: 600px;
+}
+
+.upload-area {
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  background-color: var(--bg-secondary);
+}
+
+.upload-area:hover:not(.loading) {
+  border-color: var(--border-focus);
+  background-color: var(--bg-tertiary);
+}
+
+.upload-area.dragging {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.upload-area.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.upload-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.upload-text {
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.upload-preview {
+  max-width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.upload-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
