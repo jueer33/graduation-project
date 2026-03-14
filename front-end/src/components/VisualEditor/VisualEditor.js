@@ -8,8 +8,11 @@ import {
   updateNode, 
   removeNode, 
   duplicateNode,
+  addChildNode,
+  findNode,
   createDesignJSON 
 } from '../../utils/designJsonUtils';
+import { createNode, getComponentTypes, canHaveChildren } from '../../constants/componentTemplates';
 
 /**
  * 可视化编辑器组件
@@ -23,7 +26,8 @@ import {
 const VisualEditor = ({ 
   initialDesignJson = null, 
   onChange = () => {},
-  onSave = () => {}
+  onSave = () => {},
+  isSaving = false
 }) => {
   // 初始化Design JSON
   const [designJson, setDesignJson] = useState(() => {
@@ -106,6 +110,37 @@ const VisualEditor = ({
     const newDesignJson = duplicateNode(designJson, selectedId);
     updateDesignJson(newDesignJson);
   }, [designJson, selectedId, updateDesignJson]);
+
+  /**
+   * 添加新组件
+   */
+  const handleAddComponent = useCallback((componentType) => {
+    // 确定父节点ID
+    let parentId = selectedId;
+    
+    // 如果没有选中节点，或者选中节点不能包含子元素，则添加到根节点
+    if (!parentId) {
+      parentId = designJson.root.id;
+    } else {
+      const { node: selectedNodeData } = findNode(designJson.root, selectedId);
+      if (selectedNodeData && !canHaveChildren(selectedNodeData.type)) {
+        // 如果选中的节点不能包含子元素，找到它的父节点
+        const { parent } = findNode(designJson.root, selectedId);
+        parentId = parent ? parent.id : designJson.root.id;
+      }
+    }
+    
+    // 创建新节点
+    const newNode = createNode(componentType);
+    if (!newNode) return;
+    
+    // 添加到父节点
+    const newDesignJson = addChildNode(designJson, parentId, newNode);
+    updateDesignJson(newDesignJson);
+    
+    // 选中新添加的节点
+    selectNode(newNode.id);
+  }, [designJson, selectedId, updateDesignJson, selectNode]);
 
   /**
    * 处理撤销
@@ -197,9 +232,10 @@ const VisualEditor = ({
           <button 
             className="toolbar-btn primary" 
             onClick={handleSave}
+            disabled={isSaving}
             title="保存 (Ctrl+S)"
           >
-            💾 保存
+            {isSaving ? '⏳ 保存中...' : '💾 保存'}
           </button>
         </div>
         
@@ -219,31 +255,31 @@ const VisualEditor = ({
           <div className="sidebar-section">
             <h3 className="sidebar-title">组件库</h3>
             <div className="component-list">
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('container')}>
                 <span className="component-icon">📦</span>
                 <span className="component-name">容器</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('text')}>
                 <span className="component-icon">📝</span>
                 <span className="component-name">文本</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('button')}>
                 <span className="component-icon">🔘</span>
                 <span className="component-name">按钮</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('image')}>
                 <span className="component-icon">🖼️</span>
                 <span className="component-name">图片</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('input')}>
                 <span className="component-icon">📥</span>
                 <span className="component-name">输入框</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('card')}>
                 <span className="component-icon">🃏</span>
                 <span className="component-name">卡片</span>
               </div>
-              <div className="component-item" onClick={() => {}}>
+              <div className="component-item" onClick={() => handleAddComponent('divider')}>
                 <span className="component-icon">➖</span>
                 <span className="component-name">分割线</span>
               </div>

@@ -1,18 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '../../../store/store';
-import { aiAPI, historyAPI } from '../../../services/api';
+import { aiAPI } from '../../../services/api';
 import MessageList from '../../MessageList/MessageList';
 import InputArea from '../../InputArea/InputArea';
 import './TextToDesign.css';
 
 const TextToDesign = () => {
   const { 
-    currentDesignJson, 
     setCurrentDesignJson, 
     setPreviewState,
     addConversation,
     getCurrentConversations,
-    currentModule
+    currentModule,
+    setCurrentHistoryId
   } = useAppStore();
   
   const [loading, setLoading] = useState(false);
@@ -35,6 +35,9 @@ const TextToDesign = () => {
       const response = await aiAPI.textToDesign(text);
       
       if (response.success && response.designJson) {
+        // 清除当前历史记录ID（因为这是新的设计）
+        setCurrentHistoryId(null);
+        
         // 更新Design JSON
         setCurrentDesignJson(response.designJson);
         setPreviewState('design');
@@ -67,4 +70,3 @@ const TextToDesign = () => {
 };
 
 export default TextToDesign;
-

@@ -15,7 +15,13 @@ export const AppProvider = ({ children }) => {
   const [currentModule, setCurrentModule] = useState('text-to-design');
   
   // 当前 Design JSON
-  const [currentDesignJson, setCurrentDesignJson] = useState(null);
+  const [currentDesignJson, setCurrentDesignJsonState] = useState(null);
+  
+  // 当前编辑的历史记录ID
+  const [currentHistoryId, setCurrentHistoryId] = useState(null);
+  
+  // 设计稿是否被修改过（用于判断是否需要保存）
+  const [isDesignModified, setIsDesignModified] = useState(false);
   
   // 当前预览状态: 'design' | 'code' | 'hidden'
   const [previewState, setPreviewState] = useState('design');
@@ -58,6 +64,19 @@ export const AppProvider = ({ children }) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
   }, [theme]);
+  
+  // 设置Design JSON（标记为已修改）
+  const setCurrentDesignJson = useCallback((designJson) => {
+    setCurrentDesignJsonState(designJson);
+    if (designJson) {
+      setIsDesignModified(true);
+    }
+  }, []);
+  
+  // 重置修改状态（保存后调用）
+  const resetDesignModified = useCallback(() => {
+    setIsDesignModified(false);
+  }, []);
   
   // 设置用户
   const loginUser = useCallback((userData, authToken) => {
@@ -171,6 +190,7 @@ export const AppProvider = ({ children }) => {
     token,
     sidebarCollapsed,
     theme,
+    currentHistoryId,
     
     // 方法
     setCurrentModule,
@@ -188,7 +208,10 @@ export const AppProvider = ({ children }) => {
     loginUser,
     logoutUser,
     setSidebarCollapsed,
-    toggleTheme
+    toggleTheme,
+    setCurrentHistoryId,
+    isDesignModified,
+    resetDesignModified
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

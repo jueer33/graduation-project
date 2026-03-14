@@ -65,6 +65,20 @@ export const createDesignJSON = (options = {}) => {
 };
 
 /**
+ * 克隆节点
+ * @param {Object} node - 节点
+ * @returns {Object} 克隆的节点
+ */
+const cloneNode = (node) => {
+  if (!node) return null;
+  return {
+    ...node,
+    style: { ...node.style },
+    children: node.children ? node.children.map(cloneNode) : undefined
+  };
+};
+
+/**
  * 查找节点
  * @param {Object} root - 根节点
  * @param {string} nodeId - 节点ID
@@ -113,24 +127,19 @@ export const findNode = (root, nodeId) => {
 };
 
 /**
- * 更新节点
- * @param {Object} root - 根节点
+ * 更新节点 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} nodeId - 节点ID
  * @param {Object} updates - 更新内容
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const updateNode = (root, nodeId, updates) => {
-  if (!root || !nodeId) {
-    return root;
+export const updateNode = (designJson, nodeId, updates) => {
+  if (!designJson || !nodeId) {
+    return designJson;
   }
 
-  const cloneNode = (node) => ({
-    ...node,
-    style: { ...node.style },
-    children: node.children ? node.children.map(cloneNode) : undefined
-  });
-
-  const newRoot = cloneNode(root);
+  // 深克隆整个designJson
+  const newDesignJson = JSON.parse(JSON.stringify(designJson));
 
   const update = (currentNode) => {
     if (currentNode.id === nodeId) {
@@ -156,30 +165,32 @@ export const updateNode = (root, nodeId, updates) => {
     return false;
   };
 
-  update(newRoot);
-  return newRoot;
+  update(newDesignJson.root);
+  
+  // 更新metadata
+  if (!newDesignJson.metadata) {
+    newDesignJson.metadata = {};
+  }
+  newDesignJson.metadata.updatedAt = new Date().toISOString();
+  
+  return newDesignJson;
 };
 
 /**
- * 添加子节点
- * @param {Object} root - 根节点
+ * 添加子节点 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} parentId - 父节点ID
  * @param {Object} newNode - 新节点
  * @param {number} index - 插入位置（可选，默认添加到末尾）
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const addChildNode = (root, parentId, newNode, index = -1) => {
-  if (!root || !parentId || !newNode) {
-    return root;
+export const addChildNode = (designJson, parentId, newNode, index = -1) => {
+  if (!designJson || !parentId || !newNode) {
+    return designJson;
   }
 
-  const cloneNode = (node) => ({
-    ...node,
-    style: { ...node.style },
-    children: node.children ? [...node.children] : undefined
-  });
-
-  const newRoot = cloneNode(root);
+  // 深克隆整个designJson
+  const newDesignJson = JSON.parse(JSON.stringify(designJson));
 
   const add = (currentNode) => {
     if (currentNode.id === parentId) {
@@ -212,29 +223,31 @@ export const addChildNode = (root, parentId, newNode, index = -1) => {
     return false;
   };
 
-  add(newRoot);
-  return newRoot;
+  add(newDesignJson.root);
+  
+  // 更新metadata
+  if (!newDesignJson.metadata) {
+    newDesignJson.metadata = {};
+  }
+  newDesignJson.metadata.updatedAt = new Date().toISOString();
+  
+  return newDesignJson;
 };
 
 /**
- * 删除节点
- * @param {Object} root - 根节点
+ * 删除节点 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} nodeId - 节点ID
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const removeNode = (root, nodeId) => {
-  if (!root || !nodeId || root.id === nodeId) {
+export const removeNode = (designJson, nodeId) => {
+  if (!designJson || !nodeId || designJson.root.id === nodeId) {
     // 不能删除根节点
-    return root;
+    return designJson;
   }
 
-  const cloneNode = (node) => ({
-    ...node,
-    style: { ...node.style },
-    children: node.children ? [...node.children] : undefined
-  });
-
-  const newRoot = cloneNode(root);
+  // 深克隆整个designJson
+  const newDesignJson = JSON.parse(JSON.stringify(designJson));
 
   const remove = (currentNode) => {
     if (!currentNode.children) {
@@ -256,68 +269,66 @@ export const removeNode = (root, nodeId) => {
     return false;
   };
 
-  remove(newRoot);
-  return newRoot;
+  remove(newDesignJson.root);
+  
+  // 更新metadata
+  if (!newDesignJson.metadata) {
+    newDesignJson.metadata = {};
+  }
+  newDesignJson.metadata.updatedAt = new Date().toISOString();
+  
+  return newDesignJson;
 };
 
 /**
- * 移动节点
- * @param {Object} root - 根节点
+ * 移动节点 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} nodeId - 要移动的节点ID
  * @param {string} targetParentId - 目标父节点ID
  * @param {number} targetIndex - 目标位置
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const moveNode = (root, nodeId, targetParentId, targetIndex = -1) => {
-  if (!root || !nodeId || !targetParentId) {
-    return root;
+export const moveNode = (designJson, nodeId, targetParentId, targetIndex = -1) => {
+  if (!designJson || !nodeId || !targetParentId) {
+    return designJson;
   }
 
   // 不能移动到自己内部
-  const { path } = findNode(root, targetParentId);
+  const { path } = findNode(designJson.root, targetParentId);
   if (path.includes(nodeId)) {
-    return root;
+    return designJson;
   }
 
   // 找到要移动的节点
-  const { node: nodeToMove, parent: sourceParent } = findNode(root, nodeId);
-  if (!nodeToMove || !sourceParent) {
-    return root;
+  const { node: nodeToMove } = findNode(designJson.root, nodeId);
+  if (!nodeToMove) {
+    return designJson;
   }
 
-  // 克隆根节点
-  const cloneNode = (node) => ({
-    ...node,
-    style: { ...node.style },
-    children: node.children ? node.children.map(cloneNode) : undefined
-  });
-
-  let newRoot = cloneNode(root);
-
-  // 从原位置删除
-  newRoot = removeNode(newRoot, nodeId);
-
-  // 添加到新位置
-  newRoot = addChildNode(newRoot, targetParentId, nodeToMove, targetIndex);
-
-  return newRoot;
+  // 先删除
+  let newDesignJson = removeNode(designJson, nodeId);
+  
+  // 再添加
+  newDesignJson = addChildNode(newDesignJson, targetParentId, nodeToMove, targetIndex);
+  
+  return newDesignJson;
 };
 
 /**
- * 复制节点
- * @param {Object} root - 根节点
+ * 复制节点 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} nodeId - 要复制的节点ID
  * @param {string} targetParentId - 目标父节点ID（可选，默认为原父节点）
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const duplicateNode = (root, nodeId, targetParentId = null) => {
-  if (!root || !nodeId) {
-    return root;
+export const duplicateNode = (designJson, nodeId, targetParentId = null) => {
+  if (!designJson || !nodeId) {
+    return designJson;
   }
 
-  const { node: nodeToCopy, parent: sourceParent } = findNode(root, nodeId);
+  const { node: nodeToCopy, parent: sourceParent } = findNode(designJson.root, nodeId);
   if (!nodeToCopy) {
-    return root;
+    return designJson;
   }
 
   // 递归克隆节点并生成新ID
@@ -340,12 +351,12 @@ export const duplicateNode = (root, nodeId, targetParentId = null) => {
   const parentId = targetParentId || sourceParent?.id;
 
   if (!parentId) {
-    return root;
+    return designJson;
   }
 
   // 找到原节点的索引，在其后插入
-  const { index: sourceIndex } = findNode(root, nodeId);
-  return addChildNode(root, parentId, newNode, sourceIndex + 1);
+  const { index: sourceIndex } = findNode(designJson.root, nodeId);
+  return addChildNode(designJson, parentId, newNode, sourceIndex + 1);
 };
 
 /**
@@ -391,14 +402,14 @@ export const getSiblings = (root, nodeId) => {
 };
 
 /**
- * 更新节点样式
- * @param {Object} root - 根节点
+ * 更新节点样式 - 返回完整的designJson
+ * @param {Object} designJson - Design JSON对象
  * @param {string} nodeId - 节点ID
  * @param {Object} styleUpdates - 样式更新
- * @returns {Object} 新的根节点
+ * @returns {Object} 新的Design JSON对象
  */
-export const updateNodeStyle = (root, nodeId, styleUpdates) => {
-  return updateNode(root, nodeId, { style: styleUpdates });
+export const updateNodeStyle = (designJson, nodeId, styleUpdates) => {
+  return updateNode(designJson, nodeId, { style: styleUpdates });
 };
 
 /**
@@ -515,7 +526,7 @@ export const updateMetadata = (designJson, metadataUpdates) => {
   return {
     ...designJson,
     metadata: {
-      ...designJson.metadata,
+      ...(designJson.metadata || {}),
       ...metadataUpdates,
       updatedAt: new Date().toISOString()
     }

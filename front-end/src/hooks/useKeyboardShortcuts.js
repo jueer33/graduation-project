@@ -9,10 +9,34 @@ import { useEffect, useCallback } from 'react';
  */
 const useKeyboardShortcuts = (actions, deps = []) => {
   /**
+   * 检查目标元素是否是输入元素
+   * @param {HTMLElement} target - 目标元素
+   * @returns {boolean}
+   */
+  const isInputElement = (target) => {
+    const tagName = target.tagName.toLowerCase();
+    const inputTypes = ['input', 'textarea', 'select'];
+    const isContentEditable = target.isContentEditable;
+    
+    return inputTypes.includes(tagName) || isContentEditable;
+  };
+
+  /**
    * 处理键盘事件
    */
   const handleKeyDown = useCallback((event) => {
-    const { key, ctrlKey, shiftKey, altKey, metaKey } = event;
+    const { key, ctrlKey, shiftKey, altKey, metaKey, target } = event;
+    
+    // 如果焦点在输入元素上，不处理快捷键（除了Escape和Ctrl+S等特定组合）
+    if (isInputElement(target)) {
+      // 在输入框中，只允许特定的全局快捷键
+      const isCtrl = ctrlKey || metaKey;
+      
+      // 只允许Ctrl+S保存和Escape退出编辑
+      if (!(isCtrl && key === 's') && key !== 'Escape') {
+        return;
+      }
+    }
     
     // 组合键检测
     const isCtrl = ctrlKey || metaKey; // 支持Mac的Command键

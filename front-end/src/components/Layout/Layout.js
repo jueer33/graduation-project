@@ -7,7 +7,7 @@ import Login from '../Auth/Login';
 import './Layout.css';
 
 const Layout = () => {
-  const { user, token, loginUser } = useAppStore();
+  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'conversation' | 'preview'
   const [showToggle, setShowToggle] = useState(false);
@@ -48,6 +48,22 @@ const Layout = () => {
     checkAuth();
   }, [token, loginUser]);
 
+  // 页面关闭前提示保存
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // 如果设计稿被修改过（无论是否有历史记录ID），提示用户
+      if (isDesignModified) {
+        // 标准的浏览器提示方式
+        const message = '您有未保存的设计稿，确定要离开吗？';
+        e.returnValue = message; // 兼容旧版浏览器
+        return message;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDesignModified]);
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -87,4 +103,3 @@ const Layout = () => {
 };
 
 export default Layout;
-

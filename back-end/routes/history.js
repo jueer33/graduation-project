@@ -14,7 +14,7 @@ router.get('/', auth, async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .select('-designJson -generatedCode'); // 不返回完整数据，只返回基本信息
+      .select('-generatedCode'); // 不返回generatedCode，但返回designJson用于匹配
 
     const total = await History.countDocuments({ userId: req.user._id });
 

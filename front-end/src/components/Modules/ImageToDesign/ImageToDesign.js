@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../../store/store';
-import { aiAPI, historyAPI } from '../../../services/api';
+import { aiAPI } from '../../../services/api';
 import MessageList from '../../MessageList/MessageList';
 import InputArea from '../../InputArea/InputArea';
 import './ImageToDesign.css';
@@ -11,7 +11,8 @@ const ImageToDesign = () => {
     setPreviewState,
     addConversation,
     getCurrentConversations,
-    currentModule
+    currentModule,
+    setCurrentHistoryId
   } = useAppStore();
   
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,9 @@ const ImageToDesign = () => {
         const response = await aiAPI.imageToDesign(formData);
         
         if (response.success && response.designJson) {
+          // 清除当前历史记录ID（因为这是新的设计）
+          setCurrentHistoryId(null);
+          
           // 更新Design JSON
           setCurrentDesignJson(response.designJson);
           setPreviewState('design');
@@ -69,6 +73,9 @@ const ImageToDesign = () => {
         const response = await aiAPI.textToDesign(text);
         
         if (response.success && response.designJson) {
+          // 清除当前历史记录ID（因为这是新的设计）
+          setCurrentHistoryId(null);
+          
           setCurrentDesignJson(response.designJson);
           setPreviewState('design');
         }
@@ -77,7 +84,7 @@ const ImageToDesign = () => {
       const errorMessage = {
         id: Date.now() + 2,
         type: 'error',
-        content: error.message || '处理失败，请重试',
+        content: error.message || '解析失败，请重试',
         timestamp: new Date()
       };
       addConversation(errorMessage, currentModule);
@@ -92,8 +99,8 @@ const ImageToDesign = () => {
       <InputArea
         onSubmit={handleSubmit}
         loading={loading}
-        placeholder="上传图片并描述您的需求，或直接输入文字..."
-        allowImageUpload={true}
+        placeholder="上传图片或描述您想要的页面设计..."
+        showImageUpload={true}
       />
     </div>
   );
