@@ -150,7 +150,8 @@ const TextToDesign = () => {
     setLoading(true);
 
     try {
-      const response = await aiAPI.textToDesign(text);
+      // 获取当前设计稿（如果有），用于上下文关联
+      const response = await aiAPI.textToDesign(text, currentDesignJson);
 
       if (response.success && response.designJson) {
         // 添加AI返回的设计稿消息到对话

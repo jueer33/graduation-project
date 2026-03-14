@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const auth = require('../middleware/auth');
+const { generateDesignJson } = require('../utils/mockDesignGenerator');
 
 const router = express.Router();
 
@@ -10,87 +11,10 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-// 生成伪Design JSON示例数据
-function generateMockDesignJson() {
-  return {
-    type: 'design-json',
-    version: '1.0',
-    root: {
-      id: 'root',
-      type: 'container',
-      layout: 'column',
-      style: {
-        padding: '20px',
-        backgroundColor: '#ffffff',
-        gap: '16px'
-      },
-      children: [
-        {
-          id: 'header',
-          type: 'container',
-          layout: 'row',
-          style: {
-            padding: '16px',
-            backgroundColor: '#8b5cf6',
-            borderRadius: '8px',
-            justifyContent: 'center',
-            alignItems: 'center'
-          },
-          children: [
-            {
-              id: 'title',
-              type: 'text',
-              content: '欢迎使用AI代码生成系统',
-              style: {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: '#ffffff'
-              }
-            }
-          ]
-        },
-        {
-          id: 'content',
-          type: 'container',
-          layout: 'column',
-          style: {
-            padding: '20px',
-            backgroundColor: '#f7f7f8',
-            borderRadius: '8px',
-            gap: '12px'
-          },
-          children: [
-            {
-              id: 'subtitle',
-              type: 'text',
-              content: '这是一个示例页面',
-              style: {
-                fontSize: '18px',
-                color: '#353740',
-                marginBottom: '12px'
-              }
-            },
-            {
-              id: 'description',
-              type: 'text',
-              content: 'Design JSON 是系统的唯一真实数据源，所有设计预览和代码生成都基于它。',
-              style: {
-                fontSize: '14px',
-                color: '#6e6e80',
-                lineHeight: '1.6'
-              }
-            }
-          ]
-        }
-      ]
-    }
-  };
-}
-
 // 文本生成Design JSON
 router.post('/text-to-design', auth, async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, currentDesignJson } = req.body;
 
     if (!text) {
       return res.status(400).json({ message: '文本内容不能为空' });
@@ -99,38 +23,8 @@ router.post('/text-to-design', auth, async (req, res) => {
     // 模拟AI处理延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // 返回伪数据
-    const designJson = generateMockDesignJson();
-    
-    // 根据用户输入简单调整内容
-    if (text.includes('按钮') || text.includes('button')) {
-      designJson.root.children.push({
-        id: 'button-container',
-        type: 'container',
-        layout: 'row',
-        style: {
-          justifyContent: 'center',
-          gap: '12px',
-          marginTop: '16px'
-        },
-        children: [
-          {
-            id: 'button1',
-            type: 'button',
-            content: '主要按钮',
-            style: {
-              padding: '12px 24px',
-              backgroundColor: '#8b5cf6',
-              color: '#ffffff',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }
-          }
-        ]
-      });
-    }
+    // 使用伪数据生成器生成 Design JSON
+    const designJson = generateDesignJson(text, currentDesignJson);
 
     res.json({
       success: true,
@@ -141,54 +35,76 @@ router.post('/text-to-design', auth, async (req, res) => {
   }
 });
 
-// 图片生成Design JSON（支持图片+文字）
-router.post('/image-to-design', auth, upload.single('image'), async (req, res) => {
+// 图片生成Design JSON（支持多张图片+文字）
+router.post('/image-to-design', auth, (req, res, next) => {
+  upload.array('images', 5)(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      // Multer 错误处理
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          success: false,
+          message: '文件太大，单张图片不能超过10MB' 
+        });
+      } else if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ 
+          success: false,
+          message: '图片数量过多，最多只能上传5张图片' 
+        });
+      } else {
+        return res.status(400).json({ 
+          success: false,
+          message: '文件上传错误: ' + err.message 
+        });
+      }
+    } else if (err) {
+      return res.status(500).json({ 
+        success: false,
+        message: '上传失败: ' + err.message 
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
-    if (!req.file && !req.body.text) {
+    // 支持多张图片或单张图片
+    const images = req.files || [];
+    
+    if (images.length === 0 && !req.body.text) {
       return res.status(400).json({ message: '请上传图片文件或输入文字' });
     }
 
     const text = req.body.text || '';
     
-    // 模拟AI处理延迟
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // 返回伪数据
-    const designJson = generateMockDesignJson();
-    
-    // 如果有文本，可以根据文本调整设计
-    if (text.includes('按钮') || text.includes('button')) {
-      designJson.root.children.push({
-        id: 'button-container',
-        type: 'container',
-        layout: 'row',
-        style: {
-          justifyContent: 'center',
-          gap: '12px',
-          marginTop: '16px'
-        },
-        children: [
-          {
-            id: 'button1',
-            type: 'button',
-            content: '主要按钮',
-            style: {
-              padding: '12px 24px',
-              backgroundColor: '#8b5cf6',
-              color: '#ffffff',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }
-          }
-        ]
-      });
+    // 解析 currentDesignJson（如果是字符串）
+    let currentDesignJson = null;
+    if (req.body.currentDesignJson) {
+      try {
+        currentDesignJson = typeof req.body.currentDesignJson === 'string' 
+          ? JSON.parse(req.body.currentDesignJson)
+          : req.body.currentDesignJson;
+      } catch (e) {
+        console.warn('解析 currentDesignJson 失败:', e.message);
+      }
     }
+    
+    // 记录接收到的图片信息（用于调试和伪实现）
+    console.log(`接收到 ${images.length} 张图片:`);
+    images.forEach((img, index) => {
+      console.log(`  图片 ${index + 1}: ${img.originalname}, 大小: ${img.size} bytes`);
+    });
+    
+    // 模拟AI处理延迟（多张图片处理时间稍长）
+    const delay = images.length > 1 ? 2000 : 1500;
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    // 使用伪数据生成器生成 Design JSON
+    // 如果有图片，可以根据图片数量调整生成逻辑
+    const designJson = generateDesignJson(text, currentDesignJson);
 
     res.json({
       success: true,
-      designJson
+      designJson,
+      imageCount: images.length
     });
   } catch (error) {
     res.status(500).json({ message: '解析失败', error: error.message });
@@ -467,7 +383,7 @@ router.post('/chat', auth, async (req, res) => {
 
     // 如果最后需要返回完整数据
     if (moduleType === 'text-to-design' || moduleType === 'image-to-design') {
-      const designJson = generateMockDesignJson();
+      const designJson = generateDesignJson('继续生成');
       res.write(`data: ${JSON.stringify({ type: 'complete', designJson })}\n\n`);
     }
 
@@ -478,4 +394,3 @@ router.post('/chat', auth, async (req, res) => {
 });
 
 module.exports = router;
-

@@ -45,10 +45,15 @@ export const authAPI = {
 
 // AI相关接口
 export const aiAPI = {
-  textToDesign: (text) => api.post('/ai/text-to-design', { text }),
-  imageToDesign: (formData) => api.post('/ai/image-to-design', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  textToDesign: (text, currentDesignJson = null) => api.post('/ai/text-to-design', { text, currentDesignJson }),
+  imageToDesign: (formData, currentDesignJson = null) => {
+    if (currentDesignJson) {
+      formData.append('currentDesignJson', JSON.stringify(currentDesignJson));
+    }
+    return api.post('/ai/image-to-design', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   designToCode: (designJson, framework) => api.post('/ai/design-to-code', { designJson, framework }),
   chat: (messages, moduleType, framework) => api.post('/ai/chat', { messages, moduleType, framework })
 };

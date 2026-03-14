@@ -100,6 +100,35 @@
   opacity: 0.9;
 }
 
+/* 多张图片样式 */
+.message-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  max-width: 320px;
+}
+
+.message-image-item {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+}
+
+.message-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.message-image-item img:hover {
+  opacity: 0.9;
+}
+
 .image-enlarged-overlay {
   position: fixed;
   top: 0;

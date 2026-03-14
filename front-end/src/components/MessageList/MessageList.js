@@ -35,6 +35,7 @@ const MessageList = ({ messages, onPreviewDesign }) => {
     // 普通消息
     return (
       <>
+        {/* 支持单张图片 (message.image) 或多张图片 (message.images) */}
         {message.image && (
           <div className="message-image">
             <img
@@ -42,6 +43,19 @@ const MessageList = ({ messages, onPreviewDesign }) => {
               alt="消息图片"
               onClick={() => handleImageClick(message.image)}
             />
+          </div>
+        )}
+        {message.images && message.images.length > 0 && (
+          <div className="message-images">
+            {message.images.map((img, index) => (
+              <div key={index} className="message-image-item">
+                <img
+                  src={img}
+                  alt={`消息图片 ${index + 1}`}
+                  onClick={() => handleImageClick(img)}
+                />
+              </div>
+            ))}
           </div>
         )}
         {message.content && (

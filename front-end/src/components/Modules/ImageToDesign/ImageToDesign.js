@@ -97,44 +97,51 @@ const ImageToDesign = () => {
     console.log('加载设计稿到预览区，消息ID:', messageId);
   };
 
-  const handleSubmit = async (text, imageFile) => {
-    if ((!text.trim() && !imageFile) || loading) return;
+  const handleSubmit = async (text, imageFiles) => {
+    // 支持多张图片数组或单张图片
+    const images = Array.isArray(imageFiles) ? imageFiles : (imageFiles ? [imageFiles] : []);
+    
+    if ((!text.trim() && images.length === 0) || loading) return;
 
     setLoading(true);
 
-    // 创建图片预览URL
-    let imageUrl = null;
-    if (imageFile) {
-      imageUrl = URL.createObjectURL(imageFile);
-    }
+    // 创建图片预览URL数组
+    const imageUrls = images.map(file => URL.createObjectURL(file));
 
     // 添加用户消息
     const userMessage = {
       id: Date.now(),
       type: 'user',
       content: text || '',
-      image: imageUrl,
+      images: imageUrls,
       timestamp: new Date()
     };
     addConversation(userMessage, currentModule);
 
     try {
-      if (imageFile) {
+      if (images.length > 0) {
         const formData = new FormData();
-        formData.append('image', imageFile);
+        
+        // 添加多张图片到 FormData
+        images.forEach((file, index) => {
+          formData.append('images', file);
+        });
 
         if (text.trim()) {
           formData.append('text', text);
         }
 
-        const response = await aiAPI.imageToDesign(formData);
+        // 传入当前设计稿（如果有），用于上下文关联
+        const response = await aiAPI.imageToDesign(formData, currentDesignJson);
 
         if (response.success && response.designJson) {
           // 添加设计稿消息到对话
           const designMessage = {
             id: Date.now() + 1,
             type: 'design',
-            content: '图片解析成功，已为您生成设计稿：',
+            content: images.length > 1 
+              ? `图片解析成功（${images.length}张图片），已为您生成设计稿：` 
+              : '图片解析成功，已为您生成设计稿：',
             designJson: response.designJson,
             timestamp: new Date()
           };
@@ -144,7 +151,7 @@ const ImageToDesign = () => {
 
           const historyData = {
             moduleType: currentModule,
-            userInput: text || '图片上传',
+            userInput: text || `图片上传（${images.length}张）`,
             designJson: response.designJson,
             conversations: currentConversations,
             createdAt: new Date().toISOString()
@@ -173,7 +180,7 @@ const ImageToDesign = () => {
               setCurrentHistoryId(historyResponse.data._id);
               const newHistory = {
                 ...historyResponse.data,
-                userInput: text || '图片上传',
+                userInput: text || `图片上传（${images.length}张）`,
                 moduleType: currentModule,
                 createdAt: new Date().toISOString()
               };
@@ -187,7 +194,8 @@ const ImageToDesign = () => {
           }, 3000);
         }
       } else if (text.trim()) {
-        const response = await aiAPI.textToDesign(text);
+        // 传入当前设计稿（如果有），用于上下文关联
+        const response = await aiAPI.textToDesign(text, currentDesignJson);
 
         if (response.success && response.designJson) {
           const designMessage = {
@@ -266,7 +274,7 @@ const ImageToDesign = () => {
         onSubmit={handleSubmit}
         loading={loading}
         placeholder="上传图片或描述您想要的页面设计..."
-        showImageUpload={true}
+        allowImageUpload={true}
       />
     </div>
   );

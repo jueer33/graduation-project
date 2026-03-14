@@ -10,21 +10,23 @@ const InputArea = ({
   onImageSelect
 }) => {
   const [input, setInput] = useState('');
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const MAX_IMAGES = 5;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const canSubmit = allowEmptySubmit || input.trim() || selectedImage;
+    const canSubmit = allowEmptySubmit || input.trim() || selectedImages.length > 0;
     if (!loading && canSubmit) {
-      onSubmit(input, selectedImage);
+      onSubmit(input, selectedImages);
       // 只在有实际输入内容时才清空
-      if (input.trim() || selectedImage) {
+      if (input.trim() || selectedImages.length > 0) {
         setInput('');
-        setSelectedImage(null);
-        setImagePreview(null);
+        setSelectedImages([]);
+        setImagePreviews([]);
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto';
         }
@@ -39,39 +41,54 @@ const InputArea = ({
     }
   };
 
-  const handleFileSelect = (file) => {
-    if (!file || !file.type.startsWith('image/')) {
+  const handleFileSelect = (files) => {
+    if (!files || files.length === 0) return;
+
+    // 检查总数量限制
+    const totalCount = selectedImages.length + files.length;
+    if (totalCount > MAX_IMAGES) {
+      alert(`最多只能上传${MAX_IMAGES}张图片，您已选择${selectedImages.length}张，还能选择${MAX_IMAGES - selectedImages.length}张`);
+      return;
+    }
+
+    // 过滤非图片文件
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
       alert('请选择图片文件');
       return;
     }
 
-    setSelectedImage(file);
+    // 添加新图片到数组
+    setSelectedImages(prev => [...prev, ...imageFiles]);
     
-    // 创建预览
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    // 为每张图片创建预览
+    imageFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreviews(prev => [...prev, { url: e.target.result, name: file.name }]);
+      };
+      reader.readAsDataURL(file);
+    });
 
     if (onImageSelect) {
-      onImageSelect(file);
+      imageFiles.forEach(file => onImageSelect(file));
     }
   };
 
   const handleFileInputChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files);
     }
-  };
-
-  const handleRemoveImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
+    // 重置 input 值，允许重复选择相同文件
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemoveImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e) => {
@@ -83,9 +100,9 @@ const InputArea = ({
   const handleDrop = (e) => {
     if (allowImageUpload) {
       e.preventDefault();
-      const file = e.dataTransfer.files?.[0];
-      if (file) {
-        handleFileSelect(file);
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFileSelect(files);
       }
     }
   };
@@ -97,7 +114,7 @@ const InputArea = ({
     }
   }, [input]);
 
-  const canSubmit = allowEmptySubmit || input.trim() || selectedImage;
+  const canSubmit = allowEmptySubmit || input.trim() || selectedImages.length > 0;
 
   return (
     <div 
@@ -105,16 +122,31 @@ const InputArea = ({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {imagePreview && (
-        <div className="input-image-preview">
-          <img src={imagePreview} alt="预览" />
-          <button 
-            type="button"
-            className="input-image-remove"
-            onClick={handleRemoveImage}
-          >
-            ×
-          </button>
+      {imagePreviews.length > 0 && (
+        <div className="input-images-preview">
+          {imagePreviews.map((preview, index) => (
+            <div key={index} className="input-image-preview-item">
+              <img src={preview.url} alt={`预览 ${index + 1}`} />
+              <button 
+                type="button"
+                className="input-image-remove"
+                onClick={() => handleRemoveImage(index)}
+                title="删除图片"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {selectedImages.length < MAX_IMAGES && (
+            <button
+              type="button"
+              className="input-image-add-more"
+              onClick={() => fileInputRef.current?.click()}
+              title="添加更多图片"
+            >
+              +{MAX_IMAGES - selectedImages.length}
+            </button>
+          )}
         </div>
       )}
       <form className="input-area" onSubmit={handleSubmit}>
@@ -127,6 +159,9 @@ const InputArea = ({
               title="上传图片"
             >
               📎
+              {selectedImages.length > 0 && (
+                <span className="upload-count">{selectedImages.length}</span>
+              )}
             </button>
           )}
           <div className="input-textarea-wrapper">
@@ -157,6 +192,7 @@ const InputArea = ({
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             style={{ display: 'none' }}
             onChange={handleFileInputChange}
           />
