@@ -33,6 +33,7 @@ const VisualEditor = ({
 }) => {
   // 使用 ref 来跟踪初始 designJson 的变化
   const initialDesignJsonRef = useRef(initialDesignJson);
+  const isPropChangeRef = useRef(false);
 
   // 初始化Design JSON（统一转换为旧格式以兼容现有逻辑）
   const [designJson, setDesignJson] = useState(() => {
@@ -46,6 +47,9 @@ const VisualEditor = ({
     // 直接更新，不进行深度比较，确保每次变化都能被捕获
     initialDesignJsonRef.current = initialDesignJson;
     const json = initialDesignJson || createDesignJSON();
+    // 标记为来自props的变化
+    isPropChangeRef.current = true;
+    // 只更新内部状态，不调用onChange，避免无限循环
     setDesignJson(normalizeToOldFormat(json));
   }, [initialDesignJson]);
 
@@ -63,8 +67,15 @@ const VisualEditor = ({
   useEffect(() => {
     if (historyState && historyState !== designJson) {
       setDesignJson(historyState);
-      // 返回新格式给父组件
-      onChange(convertToNewFormat(historyState));
+      // 检查是否是来自props的变化
+      if (!isPropChangeRef.current) {
+        // 只有当不是来自props的变化时才调用onChange
+        // 这是用户实际修改的结果，不是props变化导致的
+        onChange(convertToNewFormat(historyState));
+      } else {
+        // 重置标志
+        isPropChangeRef.current = false;
+      }
     }
   }, [historyState, designJson, onChange]);
 
