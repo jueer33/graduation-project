@@ -75,8 +75,10 @@ export const AppProvider = ({ children }) => {
 
   // 获取当前会话的对话
   const getCurrentConversations = useCallback(() => {
-    return currentSession.conversations;
-  }, [currentSession]);
+    if (!currentSessionId) return [];
+    const session = sessions[currentSessionId];
+    return session ? session.conversations : [];
+  }, [currentSessionId, sessions]);
 
   // 初始化主题
   useEffect(() => {
@@ -163,19 +165,23 @@ export const AppProvider = ({ children }) => {
 
   // 添加对话
   const addConversation = useCallback((message, moduleType) => {
-    if (currentSessionId) {
-      const session = sessions[currentSessionId] || {
-        designJson: null,
-        code: null,
-        previewState: 'design',
-        isModified: false,
-        conversations: []
-      };
-      updateSession(currentSessionId, {
-        conversations: [...session.conversations, message]
-      });
+    // 如果没有会话ID，自动生成一个
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = generateNewSession();
     }
-  }, [currentSessionId, sessions, updateSession]);
+    
+    const session = sessions[sessionId] || {
+      designJson: null,
+      code: null,
+      previewState: 'design',
+      isModified: false,
+      conversations: []
+    };
+    updateSession(sessionId, {
+      conversations: [...session.conversations, message]
+    });
+  }, [currentSessionId, sessions, updateSession, generateNewSession]);
 
   // 清空对话
   const clearConversations = useCallback((moduleType) => {

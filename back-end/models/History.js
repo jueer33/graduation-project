@@ -32,6 +32,10 @@ const historySchema = new mongoose.Schema({
     enum: ['react', 'vue', 'html'],
     default: null
   },
+  imagePaths: {
+    type: [String],
+    default: []
+  },
   conversations: {
     type: mongoose.Schema.Types.Mixed,
     default: []

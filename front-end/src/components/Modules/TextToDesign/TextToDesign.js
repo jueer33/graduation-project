@@ -179,16 +179,7 @@ const TextToDesign = () => {
       const response = await aiAPI.textToDesign(text, activeSessionId, latestDesignJson);
 
       if (response.success && response.designJson) {
-        // 更新会话ID（后端可能会返回新的）
-        if (response.sessionId && response.sessionId !== activeSessionId) {
-          setCurrentSessionId(response.sessionId);
-        }
-
-        // 更新当前设计稿（共享设计稿）
-        setCurrentDesignJson(response.designJson);
-        setPreviewState('design');
-
-        // 添加AI回复消息到对话
+        // 先添加AI回复消息到对话
         const aiMessage = {
           id: Date.now() + 1,
           type: 'assistant',
@@ -196,6 +187,16 @@ const TextToDesign = () => {
           timestamp: new Date()
         };
         addConversation(aiMessage, currentModule);
+
+        // 更新当前设计稿（共享设计稿）
+        setCurrentDesignJson(response.designJson);
+        setPreviewState('design');
+
+        // 只有在必要时才更新会话ID
+        // 避免因为会话ID变化导致对话内容丢失
+        // if (response.sessionId && response.sessionId !== activeSessionId) {
+        //   setCurrentSessionId(response.sessionId);
+        // }
 
         // 获取当前对话内容
         const currentConversations = getCurrentConversations();

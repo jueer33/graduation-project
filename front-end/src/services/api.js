@@ -50,13 +50,7 @@ export const aiAPI = {
     api.post('/ai/text-to-design', { text, sessionId, currentDesignJson }),
   
   // 图片生成 Design JSON
-  imageToDesign: (formData, sessionId = null, currentDesignJson = null) => {
-    if (sessionId) {
-      formData.append('sessionId', sessionId);
-    }
-    if (currentDesignJson) {
-      formData.append('currentDesignJson', JSON.stringify(currentDesignJson));
-    }
+  imageToDesign: (formData) => {
     return api.post('/ai/image-to-design', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

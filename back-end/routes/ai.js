@@ -1,15 +1,37 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const auth = require('../middleware/auth');
 const { generateDesignJson, generateHistoryTitle, streamDesignJson } = require('../services/qwenService');
 const conversationManager = require('../utils/conversationManager');
 
 const router = express.Router();
 
+// 确保上传目录存在
+const uploadDir = path.join(__dirname, '../uploads/images');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // 配置multer用于文件上传
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'image-' + uniqueSuffix + ext);
+  }
+});
+
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 5 // maximum 5 files
+  }
 });
 
 // 文本生成Design JSON
@@ -113,7 +135,7 @@ router.post('/image-to-design', auth, (req, res, next) => {
 }, async (req, res) => {
   try {
     const images = req.files || [];
-    const { text, sessionId, currentDesignJson } = req.body;
+    const { text, sessionId, currentDesignJson, imageBase64 } = req.body;
     const userId = req.user.id;
     
     if (images.length === 0 && !text) {
@@ -126,6 +148,23 @@ router.post('/image-to-design', auth, (req, res, next) => {
       activeSessionId = conversationManager.generateSessionId();
     }
 
+    // 处理图片路径，生成相对路径
+    const imagePaths = images.map(file => {
+      // 生成相对路径（相对于uploads目录）
+      const relativePath = `/uploads/images/${file.filename}`;
+      return relativePath;
+    });
+
+    // 解析base64图片数据
+    let imageBase64Array = [];
+    try {
+      if (imageBase64) {
+        imageBase64Array = JSON.parse(imageBase64);
+      }
+    } catch (error) {
+      console.error('解析base64图片数据失败:', error);
+    }
+
     // 获取对话历史
     const history = conversationManager.getHistory(userId, activeSessionId);
 
@@ -133,12 +172,27 @@ router.post('/image-to-design', auth, (req, res, next) => {
     let prompt = text || '根据上传的图片生成设计稿';
     if (images.length > 0) {
       prompt += `\n[用户上传了 ${images.length} 张图片作为参考]`;
+      // 添加图片路径信息，以便AI能够参考
+      imagePaths.forEach((path, index) => {
+        prompt += `\n图片 ${index + 1} 路径: ${path}`;
+      });
+      
+      // 添加base64图片数据，使AI能够直接分析图片内容
+      if (imageBase64Array.length > 0) {
+        prompt += '\n[图片base64数据如下，用于分析图片内容]';
+        imageBase64Array.forEach((base64, index) => {
+          // 只包含base64数据的前缀，避免数据过长
+          const base64Prefix = base64.substring(0, 100) + '...';
+          prompt += `\n图片 ${index + 1} base64: ${base64Prefix}`;
+        });
+      }
     }
 
     // 添加用户消息到历史
     conversationManager.addUserMessage(userId, activeSessionId, prompt);
 
     console.log(`接收到 ${images.length} 张图片，调用千问 API...`);
+    console.log('图片相对路径:', imagePaths);
 
     // 调用千问 API 生成 Design JSON
     // 注意：当前千问 qwen-turbo 不支持图片输入，这里仅使用文字描述
@@ -162,7 +216,8 @@ router.post('/image-to-design', auth, (req, res, next) => {
       replyText: result.replyText,
       sessionId: activeSessionId,
       title,
-      imageCount: images.length
+      imageCount: images.length,
+      imagePaths: imagePaths // 返回图片相对路径
     });
 
   } catch (error) {
