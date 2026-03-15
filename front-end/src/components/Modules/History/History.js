@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../../store/store';
 import { historyAPI } from '../../../services/api';
 import './History.css';
 
 const History = () => {
   const {
-    setCurrentDesignJson,
-    setCurrentCode,
-    setPreviewState,
-    setCurrentModule,
-    currentHistoryId
+    restoreHistory
   } = useAppStore();
   
   const [histories, setHistories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadHistories();
@@ -46,18 +44,11 @@ const History = () => {
       if (detailResponse.success) {
         const detail = detailResponse.data;
         
-        if (detail.designJson) {
-          setCurrentDesignJson(detail.designJson);
-          setPreviewState('design');
-        }
+        // 恢复历史记录到store
+        const sessionId = restoreHistory(detail, detail.moduleType);
         
-        if (detail.generatedCode) {
-          setCurrentCode(detail.generatedCode);
-          setPreviewState('code');
-        }
-        
-        // 切换到对应模块
-        setCurrentModule(detail.moduleType);
+        // 导航到对应的路由
+        navigate(`/${detail.moduleType}/${sessionId}`);
       }
     } catch (error) {
       console.error('恢复历史记录失败:', error);

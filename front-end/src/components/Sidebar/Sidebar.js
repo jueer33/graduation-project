@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
 import { historyAPI } from '../../services/api';
 import SidebarHistory from './SidebarHistory';
@@ -12,10 +13,11 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
-  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, loginUser, token, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode } = useAppStore();
+  const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, loginUser, token, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode, generateNewSession, currentSessionId } = useAppStore();
   const [isAutoCollapsed, setIsAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleResize = () => {
@@ -88,7 +90,10 @@ const Sidebar = () => {
       await saveCurrentConversation();
     }
 
-    setCurrentModule(moduleId);
+    // 生成新会话ID并导航到新路由
+    const newSessionId = generateNewSession();
+    navigate(`/${moduleId}/${newSessionId}`);
+    
     if (isAutoCollapsed) {
       setSidebarCollapsed(true);
     }
@@ -111,6 +116,7 @@ const Sidebar = () => {
       conversations: currentConversations,
       designJson: currentDesignJson,
       generatedCode: currentCode,
+      sessionId: currentSessionId,
       updatedAt: new Date().toISOString()
     };
 

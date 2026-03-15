@@ -21,7 +21,8 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
     setCurrentHistoryId,
     resetDesignModified,
     getCurrentConversations,
-    setConversationsForModule
+    setConversationsForModule,
+    currentSessionId
   } = useAppStore();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +36,7 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
       if (response.success) {
         const filtered = response.data.filter(h => h.moduleType === currentModule);
         setHistoriesForModule(filtered, currentModule);
-        console.log('历史记录已加载:', filtered.length, '条');
+        // console.log('历史记录已加载:', filtered.length, '条');
         return filtered;
       }
     } catch (error) {
@@ -44,7 +45,7 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
     return [];
   }, [currentModule, setHistoriesForModule]);
 
-  // 组件挂载时加载历史记录
+  // 当模块变化时加载历史记录
   useEffect(() => {
     loadHistories();
   }, [loadHistories]);
@@ -158,10 +159,15 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
       return <SkeletonScreen />;
     }
 
+    // console.log('PreviewArea: currentDesignJson:', currentDesignJson);
+    // console.log('PreviewArea: currentCode:', currentCode);
+    // console.log('PreviewArea: previewState:', previewState);
+    
     if (previewState === 'design' && currentDesignJson) {
       // 使用可视化编辑器
       return (
         <VisualEditor
+          key={JSON.stringify(currentDesignJson)}
           initialDesignJson={currentDesignJson}
           onChange={handleDesignChange}
           onSave={handleSaveDesign}

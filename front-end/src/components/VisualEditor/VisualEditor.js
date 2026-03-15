@@ -42,15 +42,11 @@ const VisualEditor = ({
 
   // 当 initialDesignJson 变化时更新内部状态（但不重置选中状态）
   useEffect(() => {
-    // 使用 JSON.stringify 进行深度比较，避免对象引用变化导致的无限循环
-    const currentInitialStr = JSON.stringify(initialDesignJson);
-    const prevInitialStr = JSON.stringify(initialDesignJsonRef.current);
-
-    if (currentInitialStr !== prevInitialStr) {
-      initialDesignJsonRef.current = initialDesignJson;
-      const json = initialDesignJson || createDesignJSON();
-      setDesignJson(normalizeToOldFormat(json));
-    }
+    console.log('VisualEditor: initialDesignJson changed:', initialDesignJson);
+    // 直接更新，不进行深度比较，确保每次变化都能被捕获
+    initialDesignJsonRef.current = initialDesignJson;
+    const json = initialDesignJson || createDesignJSON();
+    setDesignJson(normalizeToOldFormat(json));
   }, [initialDesignJson]);
 
   // 使用历史管理

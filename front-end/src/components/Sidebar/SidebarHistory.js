@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
 import { historyAPI } from '../../services/api';
 import './SidebarHistory.css';
@@ -21,8 +22,10 @@ const SidebarHistory = () => {
     getCurrentConversations,
     isDesignModified,
     resetDesignModified,
-    addHistory
+    addHistory,
+    restoreHistory
   } = useAppStore();
+  const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
   const [hoveredId, setHoveredId] = useState(null);
@@ -50,6 +53,8 @@ const SidebarHistory = () => {
 
   const handleRestore = async (history) => {
     try {
+      console.log('SidebarHistory: restoring history:', history._id);
+      
       // 1. 先保存当前对话（如果有内容）
       const currentConversations = getCurrentConversations();
       const hasContent = currentConversations.length > 0 || currentDesignJson;
@@ -97,39 +102,16 @@ const SidebarHistory = () => {
       const detailResponse = await historyAPI.getDetail(history._id);
       if (detailResponse.success) {
         const detail = detailResponse.data;
+        console.log('SidebarHistory: detail response:', detail);
 
-        // 设置当前编辑的历史记录ID
-        setCurrentHistoryId(history._id);
-        console.log('设置当前历史记录ID:', history._id);
-
-        // 切换到对应的模块
-        if (detail.moduleType) {
-          setCurrentModule(detail.moduleType);
-        }
-
-        // 恢复对话内容
-        if (detail.conversations && detail.conversations.length > 0) {
-          setConversationsForModule(detail.conversations, detail.moduleType || currentModule);
-        }
-
-        // 恢复设计稿到预览区
-        if (detail.designJson) {
-          setCurrentDesignJson(detail.designJson);
-          setPreviewState('design');
-          console.log('设计稿已加载到预览区');
-        } else if (detail.generatedCode) {
-          setCurrentCode(detail.generatedCode);
-          setPreviewState('code');
-          console.log('代码已加载到预览区');
-        } else {
-          // 如果没有设计稿或代码，清空预览区
-          setCurrentDesignJson(null);
-          setCurrentCode(null);
-          setPreviewState('hidden');
-        }
-
-        // 重置修改标记
-        resetDesignModified();
+        // 恢复历史记录到store
+        const sessionId = restoreHistory(detail, detail.moduleType);
+        console.log('SidebarHistory: sessionId:', sessionId);
+        
+        // 导航到对应的路由
+        navigate(`/${detail.moduleType || currentModule}/${sessionId}`);
+        
+        console.log('历史记录已恢复:', history._id);
       }
     } catch (error) {
       console.error('恢复历史记录失败:', error);

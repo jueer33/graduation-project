@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
 import Sidebar from '../Sidebar/Sidebar';
 import ConversationArea from '../ConversationArea/ConversationArea';
@@ -7,10 +8,13 @@ import Login from '../Auth/Login';
 import './Layout.css';
 
 const Layout = () => {
-  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified, getCurrentConversations, currentModule, currentCode, isGenerating } = useAppStore();
+  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified, getCurrentConversations, currentModule, currentCode, isGenerating, setCurrentModule, setCurrentSessionId, currentSessionId } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'conversation' | 'preview'
   const [showToggle, setShowToggle] = useState(false);
+  
+  const { module: routeModule, sessionId: routeSessionId } = useParams();
+  const navigate = useNavigate();
   
   // 拖拽调整大小相关状态
   const [conversationWidth, setConversationWidth] = useState(50); // 百分比
@@ -52,6 +56,16 @@ const Layout = () => {
 
     checkAuth();
   }, [token, loginUser]);
+
+  // 同步路由参数和store状态
+  useEffect(() => {
+    if (routeModule && routeModule !== currentModule) {
+      setCurrentModule(routeModule);
+    }
+    if (routeSessionId && routeSessionId !== 'undefined') {
+      setCurrentSessionId(routeSessionId);
+    }
+  }, [routeModule, routeSessionId, currentModule, setCurrentModule, setCurrentSessionId]);
 
   // 拖拽调整大小事件处理
   const handleResizeStart = useCallback((e) => {
@@ -135,6 +149,7 @@ const Layout = () => {
             designJson: currentDesignJson,
             generatedCode: currentCode,
             conversations: currentConversations,
+            sessionId: currentSessionId,
             createdAt: new Date().toISOString()
           };
 
@@ -162,7 +177,7 @@ const Layout = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDesignModified, currentHistoryId, currentDesignJson, currentModule, currentCode]);
+  }, [isDesignModified, currentHistoryId, currentDesignJson, currentModule, currentCode, currentSessionId, getCurrentConversations]);
 
   if (loading) {
     return (
