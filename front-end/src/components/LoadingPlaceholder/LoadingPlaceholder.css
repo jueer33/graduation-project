@@ -1,0 +1,117 @@
+.loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  border-radius: 12px;
+  border: 1px dashed #c0c4cc;
+  margin: 8px 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.loading-placeholder-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.loading-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loading-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.loading-subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #1890ff;
+  border-radius: 50%;
+  animation: bounce 1.4s ease-in-out infinite both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .loading-placeholder {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  border-color: #444;
+}
+
+[data-theme="dark"] .loading-title {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .loading-subtitle {
+  color: #999;
+}
+
+[data-theme="dark"] .loading-spinner {
+  border-color: #444;
+  border-top-color: #1890ff;
+}

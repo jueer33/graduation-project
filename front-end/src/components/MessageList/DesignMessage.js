@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import './DesignMessage.css';
 
-const DesignMessage = ({ message, onPreview }) => {
+/**
+ * 设计消息组件
+ * 显示 AI 生成的设计稿相关信息
+ * 
+ * @param {Object} props
+ * @param {Object} props.message - 消息对象
+ */
+const DesignMessage = ({ message }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { designJson, content } = message;
-
-  const handlePreview = () => {
-    if (onPreview && designJson) {
-      onPreview(designJson, message.id);
-    }
-  };
 
   // 格式化JSON显示
   const formatJson = (json) => {
@@ -29,12 +30,12 @@ const DesignMessage = ({ message, onPreview }) => {
       <div className="design-message-card">
         <div className="design-message-header">
           <span className="design-message-icon">🎨</span>
-          <span className="design-message-title">设计稿 JSON 数据</span>
+          <span className="design-message-title">设计稿已生成</span>
           <button
             className="design-message-toggle"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            {isExpanded ? '收起' : '展开'}代码
+            {isExpanded ? '收起' : '展开'} JSON
           </button>
         </div>
 
@@ -44,14 +45,9 @@ const DesignMessage = ({ message, onPreview }) => {
           </div>
         )}
 
-        <div className="design-message-actions">
-          <button
-            className="design-message-preview-btn"
-            onClick={handlePreview}
-          >
-            <span className="btn-icon">👁️</span>
-            <span className="btn-text">点击预览和编辑</span>
-          </button>
+        <div className="design-message-hint">
+          <span className="hint-icon">💡</span>
+          <span className="hint-text">设计稿已显示在上方预览区域</span>
         </div>
       </div>
     </div>

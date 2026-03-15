@@ -1,109 +1,93 @@
 # Bug修复计划
 
-## 问题概述
+## 问题列表
 
-根据用户反馈，需要修复以下三个问题：
+### 1. 保存设计稿失败
+**问题描述**: 用户修改设计稿后点击保存，显示"保存设计稿失败"
 
-1. **可视化编辑区域没有响应主题颜色切换** - 暗色/亮色主题切换时，VisualEditor组件没有使用CSS变量
-2. **保存设计稿后会多出来一条新的历史记录** - 保存时错误地创建了新的历史记录而不是更新现有记录
-3. **刷新页面后对话内容丢失** - 刷新时需要自动更新当前历史记录（而不是新增）
+**原因分析**:
+- 前端调用 `historyAPI.update()` 或 `historyAPI.create()` 保存设计稿
+- 需要检查后端的 `/api/history` 路由实现
+- 可能的问题：数据库模型不匹配、字段缺失、权限验证失败
+
+**修复步骤**:
+1. 检查后端 `history.js` 路由的 update 和 create 接口
+2. 检查 History 模型定义，确保支持 designJson 和 conversations 字段
+3. 检查请求数据格式与后端期望是否一致
+4. 添加更详细的错误日志以便调试
 
 ---
 
-## 问题1：可视化编辑区域主题切换
+### 2. 属性面板输入框导致组件取消选择
+**问题描述**: 在高度等输入框中点击删除或输入数字时，会取消设计稿的组件选择
 
-### 问题分析
-`VisualEditor.css` 中使用了硬编码的颜色值（如 `#ffffff`, `#333333`, `#f0f2f5` 等），而不是使用CSS变量（如 `var(--bg-primary)`, `var(--text-primary)` 等）。
+**原因分析**:
+- 在 `VisualEditor.js` 中，属性面板的输入框 onChange 事件可能触发了组件的重新渲染
+- `editorKey` 的变化导致整个 `VisualEditor` 重新渲染，从而丢失了选中状态
+- 或者点击输入框时触发了画布的点击事件，导致 deselect
 
-### 修复方案
-将 `VisualEditor.css` 中的所有硬编码颜色替换为CSS变量，使其能够响应主题切换。
+**修复步骤**:
+1. 检查 `PreviewArea.js` 中的 `editorKey` 逻辑，它会在 `currentDesignJson` 变化时强制重新渲染
+2. 修改 `VisualEditor` 组件，使用 `useRef` 或分离状态来保持选中状态
+3. 为属性面板的输入框添加 `onClick={(e) => e.stopPropagation()}` 防止冒泡
+4. 考虑将 `selectedId` 状态提升到父组件或使用全局状态管理
 
-### 需要修改的文件
+---
+
+### 3. 后端端口统一
+**问题描述**: 后端端口配置不一致
+
+**当前状态**:
+- `back-end/.env`: PORT=3003
+- `back-end/server.js`: `process.env.PORT || 3001`
+- `front-end/package.json`: proxy: `http://localhost:3001`
+- `front-end/src/services/api.js`: `http://localhost:3003/api`
+
+**修复步骤**:
+1. 统一使用 **3001** 作为后端端口（与 server.js 默认值一致）
+2. 修改 `back-end/.env` 中的 PORT 为 3001
+3. 修改 `front-end/src/services/api.js` 中的默认端口为 3001
+4. 保持 `front-end/package.json` 中的 proxy 为 3001（已经是正确的）
+
+---
+
+### 4. 画布无法左右滚动
+**问题描述**: 设计稿很大时，预览区域的画布不能左右滑动查看
+
+**原因分析**:
+- `DesignRenderer.css` 中 `.design-renderer` 有 `overflow: auto`
+- `VisualEditor.css` 中 `.visual-editor-canvas` 有 `overflow: auto`
+- 但可能父容器限制了宽度或 overflow 设置不正确
+- 设计稿内容可能超出容器但没有正确的滚动机制
+
+**修复步骤**:
+1. 检查 `PreviewArea.css` 确保预览区域容器允许滚动
+2. 检查 `DesignRenderer.css` 确保设计渲染器支持横向滚动
+3. 确保设计稿根节点有合适的 `min-width` 或固定宽度
+4. 可能需要为画布容器添加 `min-width: max-content` 或类似设置
+
+---
+
+## 执行顺序
+
+1. **端口统一** - 最简单的修改，先完成
+2. **保存设计稿失败** - 核心功能，需要优先修复
+3. **画布滚动问题** - UI体验问题
+4. **输入框取消选择** - 交互细节问题
+
+---
+
+## 相关文件
+
+### 后端
+- `back-end/.env`
+- `back-end/routes/history.js`
+- `back-end/models/History.js`
+
+### 前端
+- `front-end/src/services/api.js`
+- `front-end/src/components/PreviewArea/PreviewArea.js`
+- `front-end/src/components/VisualEditor/VisualEditor.js`
 - `front-end/src/components/VisualEditor/VisualEditor.css`
-
-### 颜色映射关系
-
-| 当前硬编码值 | 应替换为CSS变量 |
-|-------------|----------------|
-| `#ffffff` | `var(--bg-primary)` |
-| `#f0f2f5` | `var(--bg-secondary)` |
-| `#333333` | `var(--text-primary)` |
-| `#666666` | `var(--text-secondary)` |
-| `#999999` | `var(--text-tertiary)` |
-| `#e8e8e8` | `var(--border-primary)` |
-| `#d9d9d9` | `var(--border-secondary)` |
-| `#1890ff` | `var(--primary)` |
-| `#40a9ff` | `var(--primary-hover)` |
-| `#f5f5f5` | `var(--bg-secondary)` |
-| `#fafafa` | `var(--bg-secondary)` |
-| `#f6ffed` | `var(--primary-light)` |
-| `#b7eb8f` | `var(--success)` |
-| `#52c41a` | `var(--success)` |
-| `#ff4d4f` | `var(--error)` |
-| `#e6f7ff` | `var(--primary-light)` |
-
----
-
-## 问题2：保存设计稿后多出历史记录
-
-### 问题分析
-在 `PreviewArea.js` 中的 `handleSaveDesign` 函数，当保存设计稿时：
-1. 如果有 `currentHistoryId`，会调用 `historyAPI.update()` 更新现有记录 ✓
-2. 但更新后会调用 `loadHistories()` 重新加载列表
-3. 问题可能在于历史记录列表的更新逻辑
-
-经过进一步分析，发现问题可能在 `SidebarHistory.js` 中：
-- 当切换模块时会重新加载历史记录
-- 保存后历史记录列表的更新可能有问题
-
-### 修复方案
-检查 `PreviewArea.js` 中的保存逻辑，确保：
-1. 有 `currentHistoryId` 时只更新，不创建新记录
-2. 更新后正确刷新历史记录列表
-
-### 需要修改的文件
-- `front-end/src/components/PreviewArea/PreviewArea.js`（检查保存逻辑）
-
----
-
-## 问题3：刷新页面后对话内容丢失
-
-### 问题分析
-当前系统：
-- 对话内容存储在React Context中（内存中）
-- 刷新页面后Context状态丢失
-- 用户希望在刷新时自动保存当前对话到历史记录
-
-### 修复方案
-在 `TextToDesign.js` 中添加页面刷新事件监听：
-1. 监听 `beforeunload` 事件
-2. 如果当前有 `currentHistoryId`，则更新历史记录（包含对话内容）
-3. 如果没有 `currentHistoryId` 但有对话内容，创建新记录
-
-### 需要修改的文件
-- `front-end/src/components/Modules/TextToDesign/TextToDesign.js`
-- `front-end/src/components/Modules/ImageToDesign/ImageToDesign.js`
-- `front-end/src/components/Modules/DesignToCode/DesignToCode.js`
-
----
-
-## 实施步骤
-
-### Step 1: 修复VisualEditor主题切换
-- 修改 `VisualEditor.css`，将所有硬编码颜色替换为CSS变量
-
-### Step 2: 修复保存历史记录问题
-- 检查并修复 `PreviewArea.js` 中的保存逻辑
-- 确保更新历史记录时不创建新记录
-
-### Step 3: 添加刷新自动保存功能
-- 在三个模块组件中添加 `beforeunload` 事件监听
-- 实现自动保存/更新历史记录逻辑
-
----
-
-## 验证清单
-
-- [ ] 切换暗色/亮色主题时，VisualEditor正确响应
-- [ ] 保存设计稿后不会多出历史记录
-- [ ] 刷新页面后对话内容自动保存到当前历史记录
+- `front-end/src/components/DesignRenderer/DesignRenderer.css`
+- `front-end/src/components/PreviewArea/PreviewArea.css`

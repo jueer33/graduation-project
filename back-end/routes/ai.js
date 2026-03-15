@@ -1,7 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const auth = require('../middleware/auth');
-const { generateDesignJson, generateHistoryTitle } = require('../utils/mockDesignGenerator');
+const { generateDesignJson, generateHistoryTitle, streamDesignJson } = require('../services/qwenService');
+const conversationManager = require('../utils/conversationManager');
 
 const router = express.Router();
 
@@ -14,28 +15,70 @@ const upload = multer({
 // 文本生成Design JSON
 router.post('/text-to-design', auth, async (req, res) => {
   try {
-    const { text, currentDesignJson } = req.body;
+    const { text, sessionId, currentDesignJson } = req.body;
+    const userId = req.user.id;
 
     if (!text) {
       return res.status(400).json({ message: '文本内容不能为空' });
     }
 
-    // 模拟AI处理延迟
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 生成或获取会话ID
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = conversationManager.generateSessionId();
+      console.log('生成新会话ID:', activeSessionId);
+    }
 
-    // 使用伪数据生成器生成 Design JSON
-    const designJson = generateDesignJson(text, currentDesignJson);
+    // 获取对话历史
+    const history = conversationManager.getHistory(userId, activeSessionId);
+    console.log(`用户 ${userId} 会话 ${activeSessionId} 历史消息数:`, history.length);
+    
+    // 记录是否包含当前设计稿
+    if (currentDesignJson) {
+      const childrenCount = currentDesignJson.children ? currentDesignJson.children.length : 0;
+      console.log(`接收到当前设计稿，包含 ${childrenCount} 个子组件`);
+    } else {
+      console.log('未接收到当前设计稿，将生成新设计稿');
+    }
+
+    // 添加用户消息到历史
+    conversationManager.addUserMessage(userId, activeSessionId, text);
+
+    // 调用千问 API 生成 Design JSON
+    console.log('开始调用千问 API 生成设计稿...');
+    const startTime = Date.now();
+    
+    const result = await generateDesignJson(text, history, currentDesignJson);
+    
+    const duration = Date.now() - startTime;
+    console.log(`千问 API 调用完成，耗时: ${duration}ms`);
+
+    // 添加助手消息到历史
+    conversationManager.addAssistantMessage(
+      userId, 
+      activeSessionId, 
+      result.replyText, 
+      result.designJson
+    );
 
     // 生成历史记录标题
-    const title = generateHistoryTitle(text, 'text-to-design');
+    const title = await generateHistoryTitle(text);
 
     res.json({
       success: true,
-      designJson,
+      designJson: result.designJson,
+      replyText: result.replyText,
+      sessionId: activeSessionId,
       title
     });
+
   } catch (error) {
-    res.status(500).json({ message: '生成失败', error: error.message });
+    console.error('文本生成设计稿失败:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '生成失败', 
+      error: error.message 
+    });
   }
 });
 
@@ -43,7 +86,6 @@ router.post('/text-to-design', auth, async (req, res) => {
 router.post('/image-to-design', auth, (req, res, next) => {
   upload.array('images', 5)(req, res, (err) => {
     if (err instanceof multer.MulterError) {
-      // Multer 错误处理
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ 
           success: false,
@@ -70,52 +112,66 @@ router.post('/image-to-design', auth, (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    // 支持多张图片或单张图片
     const images = req.files || [];
+    const { text, sessionId, currentDesignJson } = req.body;
+    const userId = req.user.id;
     
-    if (images.length === 0 && !req.body.text) {
+    if (images.length === 0 && !text) {
       return res.status(400).json({ message: '请上传图片文件或输入文字' });
     }
 
-    const text = req.body.text || '';
-    
-    // 解析 currentDesignJson（如果是字符串）
-    let currentDesignJson = null;
-    if (req.body.currentDesignJson) {
-      try {
-        currentDesignJson = typeof req.body.currentDesignJson === 'string' 
-          ? JSON.parse(req.body.currentDesignJson)
-          : req.body.currentDesignJson;
-      } catch (e) {
-        console.warn('解析 currentDesignJson 失败:', e.message);
-      }
+    // 生成或获取会话ID
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = conversationManager.generateSessionId();
     }
-    
-    // 记录接收到的图片信息（用于调试和伪实现）
-    console.log(`接收到 ${images.length} 张图片:`);
-    images.forEach((img, index) => {
-      console.log(`  图片 ${index + 1}: ${img.originalname}, 大小: ${img.size} bytes`);
-    });
-    
-    // 模拟AI处理延迟（多张图片处理时间稍长）
-    const delay = images.length > 1 ? 2000 : 1500;
-    await new Promise(resolve => setTimeout(resolve, delay));
 
-    // 使用伪数据生成器生成 Design JSON
-    // 如果有图片，可以根据图片数量调整生成逻辑
-    const designJson = generateDesignJson(text, currentDesignJson);
+    // 获取对话历史
+    const history = conversationManager.getHistory(userId, activeSessionId);
+
+    // 构建包含图片信息的提示
+    let prompt = text || '根据上传的图片生成设计稿';
+    if (images.length > 0) {
+      prompt += `\n[用户上传了 ${images.length} 张图片作为参考]`;
+    }
+
+    // 添加用户消息到历史
+    conversationManager.addUserMessage(userId, activeSessionId, prompt);
+
+    console.log(`接收到 ${images.length} 张图片，调用千问 API...`);
+
+    // 调用千问 API 生成 Design JSON
+    // 注意：当前千问 qwen-turbo 不支持图片输入，这里仅使用文字描述
+    // 如需支持图片，需要使用支持视觉的模型如 qwen-vl
+    const result = await generateDesignJson(prompt, history, currentDesignJson);
+
+    // 添加助手消息到历史
+    conversationManager.addAssistantMessage(
+      userId, 
+      activeSessionId, 
+      result.replyText, 
+      result.designJson
+    );
 
     // 生成历史记录标题
-    const title = generateHistoryTitle(text, 'image-to-design', images.length);
+    const title = await generateHistoryTitle(text || '图片设计');
 
     res.json({
       success: true,
-      designJson,
+      designJson: result.designJson,
+      replyText: result.replyText,
+      sessionId: activeSessionId,
       title,
       imageCount: images.length
     });
+
   } catch (error) {
-    res.status(500).json({ message: '解析失败', error: error.message });
+    console.error('图片生成设计稿失败:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '解析失败', 
+      error: error.message 
+    });
   }
 });
 
@@ -366,38 +422,116 @@ export default {
 // 流式对话接口（用于支持流式返回）
 router.post('/chat', auth, async (req, res) => {
   try {
-    const { messages, moduleType, framework } = req.body;
+    const { text, sessionId, currentDesignJson } = req.body;
+    const userId = req.user.id;
 
+    if (!text) {
+      return res.status(400).json({ message: '消息内容不能为空' });
+    }
+
+    // 生成或获取会话ID
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = conversationManager.generateSessionId();
+    }
+
+    // 获取对话历史
+    const history = conversationManager.getHistory(userId, activeSessionId);
+
+    // 添加用户消息到历史
+    conversationManager.addUserMessage(userId, activeSessionId, text);
+
+    // 设置 SSE 响应头
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // 模拟流式返回
-    const chunks = [
-      '正在',
-      '处理',
-      '您的',
-      '请求',
-      '...',
-      '\n\n',
-      '生成',
-      '完成'
-    ];
+    let finalDesignJson = null;
+    let finalReplyText = '';
 
-    for (let i = 0; i < chunks.length; i++) {
-      res.write(`data: ${JSON.stringify({ chunk: chunks[i] })}\n\n`);
-      await new Promise(resolve => setTimeout(resolve, 200));
+    // 调用流式生成
+    await streamDesignJson(text, history, currentDesignJson, (chunk) => {
+      if (chunk.type === 'content') {
+        finalReplyText += chunk.content;
+      } else if (chunk.type === 'design') {
+        finalDesignJson = chunk.designJson;
+      }
+      
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    });
+
+    // 添加助手消息到历史
+    if (finalDesignJson) {
+      conversationManager.addAssistantMessage(
+        userId, 
+        activeSessionId, 
+        finalReplyText || '已为您生成设计稿', 
+        finalDesignJson
+      );
     }
 
-    // 如果最后需要返回完整数据
-    if (moduleType === 'text-to-design' || moduleType === 'image-to-design') {
-      const designJson = generateDesignJson('继续生成');
-      res.write(`data: ${JSON.stringify({ type: 'complete', designJson })}\n\n`);
-    }
+    // 发送完成事件，包含 sessionId
+    res.write(`data: ${JSON.stringify({ 
+      type: 'complete', 
+      sessionId: activeSessionId 
+    })}\n\n`);
 
     res.end();
+
   } catch (error) {
-    res.status(500).json({ message: '处理失败', error: error.message });
+    console.error('流式对话失败:', error);
+    res.write(`data: ${JSON.stringify({ 
+      type: 'error', 
+      error: error.message 
+    })}\n\n`);
+    res.end();
+  }
+});
+
+// 获取会话历史
+router.get('/conversation/:sessionId', auth, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+
+    const history = conversationManager.getHistory(userId, sessionId);
+
+    res.json({
+      success: true,
+      sessionId,
+      history
+    });
+
+  } catch (error) {
+    console.error('获取会话历史失败:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '获取失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 清除会话历史
+router.delete('/conversation/:sessionId', auth, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+
+    conversationManager.clearHistory(userId, sessionId);
+
+    res.json({
+      success: true,
+      message: '会话历史已清除'
+    });
+
+  } catch (error) {
+    console.error('清除会话历史失败:', error);
+    res.status(500).json({ 
+      success: false,
+      message: '清除失败', 
+      error: error.message 
+    });
   }
 });
 

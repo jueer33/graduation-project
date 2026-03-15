@@ -7,7 +7,7 @@ import Login from '../Auth/Login';
 import './Layout.css';
 
 const Layout = () => {
-  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified, getCurrentConversations, currentModule, currentCode } = useAppStore();
+  const { user, token, loginUser, currentDesignJson, currentHistoryId, isDesignModified, getCurrentConversations, currentModule, currentCode, isGenerating } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'conversation' | 'preview'
   const [showToggle, setShowToggle] = useState(false);
@@ -205,11 +205,12 @@ const Layout = () => {
             )}
           </>
         )}
-        {viewMode === 'split' && <PreviewArea width={100 - conversationWidth} />}
+        {viewMode === 'split' && <PreviewArea width={100 - conversationWidth} loading={isGenerating} />}
         {viewMode === 'preview' && (
           <PreviewArea 
             showBackButton={showToggle}
             onBack={handlePreviewToggle}
+            loading={isGenerating}
           />
         )}
       </div>

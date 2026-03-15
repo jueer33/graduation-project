@@ -131,8 +131,12 @@ const ImageToDesign = () => {
           formData.append('text', text);
         }
 
+        // 使用 ref 获取最新的设计稿，避免闭包问题
+        const latestDesignJson = currentDesignJsonRef.current;
+        console.log('图片生成设计稿时 Design JSON:', latestDesignJson ? '存在' : '不存在');
+        
         // 传入当前设计稿（如果有），用于上下文关联
-        const response = await aiAPI.imageToDesign(formData, currentDesignJson);
+        const response = await aiAPI.imageToDesign(formData, latestDesignJson);
 
         if (response.success && response.designJson) {
           // 添加设计稿消息到对话
@@ -196,8 +200,12 @@ const ImageToDesign = () => {
           }, 3000);
         }
       } else if (text.trim()) {
+        // 使用 ref 获取最新的设计稿，避免闭包问题
+        const latestDesignJson = currentDesignJsonRef.current;
+        console.log('文本生成设计稿时 Design JSON:', latestDesignJson ? '存在' : '不存在');
+        
         // 传入当前设计稿（如果有），用于上下文关联
-        const response = await aiAPI.textToDesign(text, currentDesignJson);
+        const response = await aiAPI.textToDesign(text, null, latestDesignJson);
 
         if (response.success && response.designJson) {
           const designMessage = {

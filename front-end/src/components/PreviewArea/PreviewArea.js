@@ -3,11 +3,12 @@ import { useAppStore } from '../../store/store';
 import DesignPreview from '../DesignPreview/DesignPreview';
 import CodePreview from '../CodePreview/CodePreview';
 import VisualEditor from '../VisualEditor';
+import SkeletonScreen from '../SkeletonScreen/SkeletonScreen';
 import Placeholder from '../Placeholder/Placeholder';
 import { historyAPI } from '../../services/api';
 import './PreviewArea.css';
 
-const PreviewArea = ({ showBackButton, onBack, width }) => {
+const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
   const {
     previewState,
     currentDesignJson,
@@ -19,7 +20,8 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
     currentHistoryId,
     setCurrentHistoryId,
     resetDesignModified,
-    getCurrentConversations
+    getCurrentConversations,
+    setConversationsForModule
   } = useAppStore();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -53,12 +55,11 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
 
   /**
    * 处理Design JSON变化
-   * 注意：这里不直接更新全局状态，只在保存时更新
+   * 更新全局状态，确保AI下次对话能获取到修改后的设计稿
    */
   const handleDesignChange = (newDesignJson) => {
-    // 不更新全局状态，避免影响其他历史记录
-    // 设计稿的更改只在 VisualEditor 内部状态维护
-    // 保存时才更新到历史记录
+    // 更新全局状态，这样下次对话时会传递给AI
+    setCurrentDesignJson(newDesignJson);
   };
 
   /**
@@ -77,11 +78,24 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
 
       console.log('保存时当前历史记录ID:', historyId);
 
+      // 更新对话历史中最后一条 AI 消息的 designJson
+      // 这样下次发送请求时会使用最新的设计稿
+      const updatedConversations = currentConversations.map(msg => {
+        if (msg.type === 'assistant' && msg.designJson) {
+          return { ...msg, designJson: designJson };
+        }
+        return msg;
+      });
+      
+      // 更新前端对话状态
+      setConversationsForModule(updatedConversations, currentModule);
+      console.log('对话历史中的 designJson 已更新');
+
       // 如果有历史记录ID，更新后端的历史记录
       if (historyId) {
         const updateData = {
           designJson: designJson,
-          conversations: currentConversations,
+          conversations: updatedConversations,
           updatedAt: new Date().toISOString()
         };
 
@@ -91,7 +105,7 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
         // 更新前端历史记录列表中的对应项，而不是重新加载
         const updatedHistories = histories.map(h =>
           h._id === historyId
-            ? { ...h, designJson: designJson, conversations: currentConversations, updatedAt: new Date().toISOString() }
+            ? { ...h, designJson: designJson, conversations: updatedConversations, updatedAt: new Date().toISOString() }
             : h
         );
         setHistoriesForModule(updatedHistories, currentModule);
@@ -104,9 +118,10 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
         const userInput = currentConversations.find(m => m.type === 'user')?.content || '';
         const historyData = {
           moduleType: currentModule,
+          title: userInput || '未命名设计',
           userInput: userInput,
           designJson: designJson,
-          conversations: currentConversations,
+          conversations: updatedConversations,
           createdAt: new Date().toISOString()
         };
 
@@ -138,12 +153,15 @@ const PreviewArea = ({ showBackButton, onBack, width }) => {
   };
 
   const renderContent = () => {
+    // 如果正在加载，显示骨架屏
+    if (loading) {
+      return <SkeletonScreen />;
+    }
+
     if (previewState === 'design' && currentDesignJson) {
-      // 使用可视化编辑器替代简单的DesignPreview
-      // key 使用 currentHistoryId 确保每个历史记录有独立的设计稿实例
+      // 使用可视化编辑器
       return (
         <VisualEditor
-          key={currentHistoryId || 'new'}
           initialDesignJson={currentDesignJson}
           onChange={handleDesignChange}
           onSave={handleSaveDesign}

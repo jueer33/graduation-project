@@ -35,7 +35,31 @@ const DesignRenderer = ({
       onMoveNode(dragNodeId, dropTargetId, dropPosition, isRowLayout);
     }
   });
-  
+
+  /**
+   * 标准化 Design JSON 结构
+   * 支持两种格式：
+   * 1. 新格式: { version, type, style, children }
+   * 2. 旧格式: { root: { type, style, children } }
+   * @param {Object} json - 原始 Design JSON
+   * @returns {Object} 标准化的 root 节点
+   */
+  const normalizeDesignJson = (json) => {
+    if (!json) return null;
+
+    // 如果存在 root 节点，使用旧格式
+    if (json.root) {
+      return json.root;
+    }
+
+    // 新格式：直接使用 json 作为 root
+    if (json.type && json.children) {
+      return json;
+    }
+
+    return null;
+  };
+
   /**
    * 渲染单个节点
    * @param {Object} node - 组件节点
@@ -45,7 +69,7 @@ const DesignRenderer = ({
   const renderNode = useCallback((node, depth = 0) => {
     if (!node) return null;
 
-    const { id, type, style = {}, content, placeholder, src, alt, children } = node;
+    const { id, type, style = {}, text, content, placeholder, src, alt, children } = node;
 
     // 转换样式
     const cssStyle = convertStyleToCSS(style);
@@ -103,14 +127,14 @@ const DesignRenderer = ({
       case 'text':
         return (
           <div key={id} {...nodeProps}>
-            {content || ''}
+            {text || content || ''}
           </div>
         );
 
       case 'button':
         return (
-          <button 
-            key={id} 
+          <button
+            key={id}
             {...nodeProps}
             onClick={(e) => {
               e.stopPropagation();
@@ -119,7 +143,7 @@ const DesignRenderer = ({
               }
             }}
           >
-            {content || '按钮'}
+            {text || content || '按钮'}
           </button>
         );
 
@@ -171,7 +195,7 @@ const DesignRenderer = ({
       default:
         return (
           <div key={id} {...nodeProps}>
-            {content || ''}
+            {text || content || ''}
             {children?.map(child => renderNode(child, depth + 1))}
           </div>
         );
@@ -189,19 +213,22 @@ const DesignRenderer = ({
     );
   }
 
-  if (!designJson.root) {
+  // 标准化 Design JSON
+  const rootNode = normalizeDesignJson(designJson);
+
+  if (!rootNode) {
     return (
       <div className="design-renderer-error">
         <div className="error-icon">⚠️</div>
         <div className="error-text">无效的设计数据</div>
-        <div className="error-hint">缺少root节点</div>
+        <div className="error-hint">数据结构不正确</div>
       </div>
     );
   }
 
   return (
     <div className={`design-renderer ${editable ? 'design-renderer-editable' : ''}`}>
-      {renderNode(designJson.root)}
+      {renderNode(rootNode)}
     </div>
   );
 };

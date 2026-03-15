@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import DesignMessage from './DesignMessage';
+import LoadingPlaceholder from '../LoadingPlaceholder/LoadingPlaceholder';
 import './MessageList.css';
 
-const MessageList = ({ messages, onPreviewDesign }) => {
+const MessageList = ({ messages, loading = false }) => {
   const [enlargedImage, setEnlargedImage] = useState(null);
 
   if (!messages || messages.length === 0) {
     return (
       <div className="message-list empty">
         <div className="empty-message">开始您的对话</div>
+        <div className="empty-hint">描述您想要的页面设计，AI 将为您生成设计稿</div>
       </div>
     );
   }
@@ -27,7 +29,6 @@ const MessageList = ({ messages, onPreviewDesign }) => {
       return (
         <DesignMessage
           message={message}
-          onPreview={onPreviewDesign}
         />
       );
     }
@@ -81,6 +82,12 @@ const MessageList = ({ messages, onPreviewDesign }) => {
             {renderMessage(message)}
           </div>
         ))}
+        {/* AI 生成时的加载占位 */}
+        {loading && (
+          <div className="message message-loading">
+            <LoadingPlaceholder />
+          </div>
+        )}
       </div>
       {enlargedImage && (
         <div className="image-enlarged-overlay" onClick={handleCloseEnlarged}>

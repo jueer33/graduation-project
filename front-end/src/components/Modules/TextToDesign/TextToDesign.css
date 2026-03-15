@@ -3,5 +3,18 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
+/* 对话容器 */
+.conversation-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg-primary, #fff);
+}
+
+/* 暗色模式适配 */
+[data-theme="dark"] .conversation-container {
+  background: var(--bg-primary, #141414);
+}

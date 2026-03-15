@@ -15,16 +15,22 @@ const TextToDesign = () => {
     setCurrentHistoryId,
     currentHistoryId,
     currentDesignJson,
-    addHistory
+    currentSessionId,
+    setCurrentSessionId,
+    addHistory,
+    generateNewSession,
+    previewState,
+    isGenerating,
+    setIsGenerating
   } = useAppStore();
 
-  const [loading, setLoading] = useState(false);
   const conversations = getCurrentConversations();
 
   // 使用ref来存储最新的conversations，避免在beforeunload中读取到过期的闭包值
   const conversationsRef = useRef(conversations);
   const currentHistoryIdRef = useRef(currentHistoryId);
   const currentDesignJsonRef = useRef(currentDesignJson);
+  const currentSessionIdRef = useRef(currentSessionId);
   // 标记是否刚刚创建了历史记录，避免beforeunload重复创建
   const justCreatedRef = useRef(false);
 
@@ -40,11 +46,16 @@ const TextToDesign = () => {
     currentDesignJsonRef.current = currentDesignJson;
   }, [currentDesignJson]);
 
+  useEffect(() => {
+    currentSessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
   // 刷新时自动保存对话内容
   const handleBeforeUnload = useCallback(async (e) => {
     const currentConversations = conversationsRef.current;
     const historyId = currentHistoryIdRef.current;
     const designJson = currentDesignJsonRef.current;
+    const sessionId = currentSessionIdRef.current;
 
     // 如果有对话内容
     if (currentConversations && currentConversations.length > 0) {
@@ -54,6 +65,7 @@ const TextToDesign = () => {
           await historyAPI.update(historyId, {
             conversations: currentConversations,
             designJson: designJson,
+            sessionId: sessionId,
             updatedAt: new Date().toISOString()
           });
           console.log('刷新时自动更新历史记录:', historyId);
@@ -64,6 +76,7 @@ const TextToDesign = () => {
             moduleType: currentModule,
             userInput: userInput,
             designJson: designJson,
+            sessionId: sessionId,
             conversations: currentConversations,
             createdAt: new Date().toISOString()
           });
@@ -88,11 +101,13 @@ const TextToDesign = () => {
       const currentConversations = conversationsRef.current;
       const historyId = currentHistoryIdRef.current;
       const designJson = currentDesignJsonRef.current;
+      const sessionId = currentSessionIdRef.current;
 
       if (currentConversations && currentConversations.length > 0) {
         const data = {
           conversations: currentConversations,
           designJson: designJson,
+          sessionId: sessionId,
           updatedAt: new Date().toISOString()
         };
 
@@ -110,6 +125,7 @@ const TextToDesign = () => {
             moduleType: currentModule,
             userInput: userInput,
             designJson: designJson,
+            sessionId: sessionId,
             conversations: currentConversations,
             createdAt: new Date().toISOString()
           };
@@ -128,16 +144,21 @@ const TextToDesign = () => {
     };
   }, [currentModule]);
 
-  // 处理预览设计稿
-  const handlePreviewDesign = (designJson, messageId) => {
-    // 设置当前设计稿到预览区
-    setCurrentDesignJson(designJson);
-    setPreviewState('design');
-    console.log('加载设计稿到预览区，消息ID:', messageId);
-  };
+  // 组件挂载时，如果没有会话ID，生成一个新的
+  useEffect(() => {
+    if (!currentSessionId) {
+      generateNewSession();
+    }
+  }, []);
 
   const handleSubmit = async (text) => {
-    if (!text.trim() || loading) return;
+    if (!text.trim() || isGenerating) return;
+
+    // 确保有会话ID
+    let activeSessionId = currentSessionId;
+    if (!activeSessionId) {
+      activeSessionId = generateNewSession();
+    }
 
     // 添加用户消息
     const userMessage = {
@@ -147,32 +168,45 @@ const TextToDesign = () => {
       timestamp: new Date()
     };
     addConversation(userMessage, currentModule);
-    setLoading(true);
+    setIsGenerating(true);
 
     try {
-      // 获取当前设计稿（如果有），用于上下文关联
-      const response = await aiAPI.textToDesign(text, currentDesignJson);
+      // 使用 ref 获取最新的设计稿，避免闭包问题
+      const latestDesignJson = currentDesignJsonRef.current;
+      console.log('发送请求时的 Design JSON:', latestDesignJson ? '存在' : '不存在');
+      
+      // 调用 AI API 生成设计稿，传递会话ID和当前设计稿
+      const response = await aiAPI.textToDesign(text, activeSessionId, latestDesignJson);
 
       if (response.success && response.designJson) {
-        // 添加AI返回的设计稿消息到对话
-        const designMessage = {
+        // 更新会话ID（后端可能会返回新的）
+        if (response.sessionId && response.sessionId !== activeSessionId) {
+          setCurrentSessionId(response.sessionId);
+        }
+
+        // 更新当前设计稿（共享设计稿）
+        setCurrentDesignJson(response.designJson);
+        setPreviewState('design');
+
+        // 添加AI回复消息到对话
+        const aiMessage = {
           id: Date.now() + 1,
-          type: 'design',
-          content: '已为您生成设计稿，点击下方按钮预览和编辑：',
-          designJson: response.designJson,
+          type: 'assistant',
+          content: response.replyText || '已为您生成设计稿',
           timestamp: new Date()
         };
-        addConversation(designMessage, currentModule);
+        addConversation(aiMessage, currentModule);
 
-        // 获取当前对话内容（包含用户输入和设计稿消息）
+        // 获取当前对话内容
         const currentConversations = getCurrentConversations();
 
-        // 准备历史记录数据（使用后端生成的标题）
+        // 准备历史记录数据
         const historyData = {
           moduleType: currentModule,
           title: response.title || text,
           userInput: text,
           designJson: response.designJson,
+          sessionId: response.sessionId || activeSessionId,
           conversations: currentConversations,
           createdAt: new Date().toISOString()
         };
@@ -210,6 +244,7 @@ const TextToDesign = () => {
               title: response.title || text,
               userInput: text,
               moduleType: currentModule,
+              sessionId: response.sessionId || activeSessionId,
               createdAt: new Date().toISOString()
             };
             addHistory(newHistory, currentModule);
@@ -224,6 +259,7 @@ const TextToDesign = () => {
         }, 3000);
       }
     } catch (error) {
+      console.error('生成失败:', error);
       const errorMessage = {
         id: Date.now() + 1,
         type: 'error',
@@ -232,16 +268,21 @@ const TextToDesign = () => {
       };
       addConversation(errorMessage, currentModule);
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   return (
     <div className="text-to-design">
-      <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
+      {/* 对话消息列表 */}
+      <div className="conversation-container">
+        <MessageList messages={conversations} loading={isGenerating} />
+      </div>
+
+      {/* 输入区域 */}
       <InputArea
         onSubmit={handleSubmit}
-        loading={loading}
+        loading={isGenerating}
         placeholder="描述您想要的页面设计，例如：创建一个包含标题和按钮的页面..."
       />
     </div>

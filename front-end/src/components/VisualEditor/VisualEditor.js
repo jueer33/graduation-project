@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import './VisualEditor.css';
 import DesignRenderer from '../DesignRenderer/DesignRenderer';
 import useSelection from '../../hooks/useSelection';
@@ -12,6 +12,7 @@ import {
   findNode,
   createDesignJSON 
 } from '../../utils/designJsonUtils';
+import { normalizeToOldFormat, convertToNewFormat } from '../../utils/designJsonAdapter';
 import { createNode, getComponentTypes, canHaveChildren } from '../../constants/componentTemplates';
 import { handleImageUpload } from '../../utils/imageUpload';
 
@@ -24,16 +25,33 @@ import { handleImageUpload } from '../../utils/imageUpload';
  * @param {Function} props.onChange - Design JSON变化回调
  * @param {Function} props.onSave - 保存回调
  */
-const VisualEditor = ({ 
-  initialDesignJson = null, 
+const VisualEditor = ({
+  initialDesignJson = null,
   onChange = () => {},
   onSave = () => {},
   isSaving = false
 }) => {
-  // 初始化Design JSON
+  // 使用 ref 来跟踪初始 designJson 的变化
+  const initialDesignJsonRef = useRef(initialDesignJson);
+
+  // 初始化Design JSON（统一转换为旧格式以兼容现有逻辑）
   const [designJson, setDesignJson] = useState(() => {
-    return initialDesignJson || createDesignJSON();
+    const json = initialDesignJson || createDesignJSON();
+    return normalizeToOldFormat(json);
   });
+
+  // 当 initialDesignJson 变化时更新内部状态（但不重置选中状态）
+  useEffect(() => {
+    // 使用 JSON.stringify 进行深度比较，避免对象引用变化导致的无限循环
+    const currentInitialStr = JSON.stringify(initialDesignJson);
+    const prevInitialStr = JSON.stringify(initialDesignJsonRef.current);
+
+    if (currentInitialStr !== prevInitialStr) {
+      initialDesignJsonRef.current = initialDesignJson;
+      const json = initialDesignJson || createDesignJSON();
+      setDesignJson(normalizeToOldFormat(json));
+    }
+  }, [initialDesignJson]);
 
   // 使用历史管理
   const {
@@ -49,7 +67,8 @@ const VisualEditor = ({
   useEffect(() => {
     if (historyState && historyState !== designJson) {
       setDesignJson(historyState);
-      onChange(historyState);
+      // 返回新格式给父组件
+      onChange(convertToNewFormat(historyState));
     }
   }, [historyState, designJson, onChange]);
 
@@ -72,7 +91,8 @@ const VisualEditor = ({
   const updateDesignJson = useCallback((newDesignJson, options = {}) => {
     setDesignJson(newDesignJson);
     pushState(newDesignJson, options);
-    onChange(newDesignJson);
+    // 返回新格式给父组件
+    onChange(convertToNewFormat(newDesignJson));
   }, [pushState, onChange]);
 
   /**
@@ -150,7 +170,7 @@ const VisualEditor = ({
     const prevState = undo();
     if (prevState) {
       setDesignJson(prevState);
-      onChange(prevState);
+      onChange(convertToNewFormat(prevState));
     }
   }, [undo, onChange]);
 
@@ -161,7 +181,7 @@ const VisualEditor = ({
     const nextState = redo();
     if (nextState) {
       setDesignJson(nextState);
-      onChange(nextState);
+      onChange(convertToNewFormat(nextState));
     }
   }, [redo, onChange]);
 
@@ -169,7 +189,7 @@ const VisualEditor = ({
    * 处理保存
    */
   const handleSave = useCallback(() => {
-    onSave(designJson);
+    onSave(convertToNewFormat(designJson));
   }, [designJson, onSave]);
 
   /**
@@ -408,7 +428,7 @@ const VisualEditor = ({
         </div>
 
         {/* 右侧属性面板 */}
-        <div className="visual-editor-properties">
+        <div className="visual-editor-properties" onClick={(e) => e.stopPropagation()}>
           <div className="properties-panel">
             <h3 className="properties-title">属性面板</h3>
             

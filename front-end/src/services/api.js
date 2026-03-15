@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000
+  timeout: 60000 // 增加超时时间到60秒，因为大模型调用可能需要更长时间
 });
 
 // 请求拦截器 - 添加token
@@ -45,8 +45,15 @@ export const authAPI = {
 
 // AI相关接口
 export const aiAPI = {
-  textToDesign: (text, currentDesignJson = null) => api.post('/ai/text-to-design', { text, currentDesignJson }),
-  imageToDesign: (formData, currentDesignJson = null) => {
+  // 文本生成 Design JSON
+  textToDesign: (text, sessionId = null, currentDesignJson = null) => 
+    api.post('/ai/text-to-design', { text, sessionId, currentDesignJson }),
+  
+  // 图片生成 Design JSON
+  imageToDesign: (formData, sessionId = null, currentDesignJson = null) => {
+    if (sessionId) {
+      formData.append('sessionId', sessionId);
+    }
     if (currentDesignJson) {
       formData.append('currentDesignJson', JSON.stringify(currentDesignJson));
     }
@@ -54,8 +61,65 @@ export const aiAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  designToCode: (designJson, framework) => api.post('/ai/design-to-code', { designJson, framework }),
-  chat: (messages, moduleType, framework) => api.post('/ai/chat', { messages, moduleType, framework })
+  
+  // Design JSON 生成代码
+  designToCode: (designJson, framework) => 
+    api.post('/ai/design-to-code', { designJson, framework }),
+  
+  // 流式对话接口
+  chatStream: (text, sessionId = null, currentDesignJson = null, onMessage) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}/ai/chat`, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('token')}`);
+      
+      let buffer = '';
+      
+      xhr.onprogress = () => {
+        const newData = xhr.responseText.substring(buffer.length);
+        buffer = xhr.responseText;
+        
+        // 解析 SSE 数据
+        const lines = newData.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              onMessage(data);
+            } catch (e) {
+              // 忽略解析错误
+            }
+          }
+        }
+      };
+      
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          resolve();
+        } else {
+          reject(new Error('请求失败'));
+        }
+      };
+      
+      xhr.onerror = () => reject(new Error('网络错误'));
+      xhr.ontimeout = () => reject(new Error('请求超时'));
+      
+      xhr.send(JSON.stringify({
+        text,
+        sessionId,
+        currentDesignJson
+      }));
+    });
+  },
+  
+  // 获取会话历史
+  getConversationHistory: (sessionId) => 
+    api.get(`/ai/conversation/${sessionId}`),
+  
+  // 清除会话历史
+  clearConversation: (sessionId) => 
+    api.delete(`/ai/conversation/${sessionId}`)
 };
 
 // 历史记录接口
@@ -68,4 +132,3 @@ export const historyAPI = {
 };
 
 export default api;
-
