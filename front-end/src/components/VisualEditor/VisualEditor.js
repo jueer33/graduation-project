@@ -501,16 +501,25 @@ const VisualEditor = ({
                 )}
 
                 {/* 内容属性 */}
-                {selectedNode.content !== undefined && selectedNode.type !== 'image' && (
+                {(selectedNode.content !== undefined || selectedNode.text !== undefined) && selectedNode.type !== 'image' && (
                   <div className="property-section">
                     <h4 className="property-section-title">内容</h4>
                     <div className="property-field">
                       <textarea
-                        value={selectedNode.content}
-                        onChange={(e) => handleUpdateNode(selectedId, { content: e.target.value })}
+                        value={selectedNode.content || selectedNode.text || ''}
+                        onChange={(e) => handleUpdateNode(selectedId, { 
+                          content: e.target.value,
+                          text: e.target.value 
+                        })}
                         rows={3}
                         placeholder="输入内容..."
+                        disabled={designJson.isGenerated === true}
                       />
+                      {designJson.isGenerated === true && (
+                        <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
+                          AI生成的内容不可编辑
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}

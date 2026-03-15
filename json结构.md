@@ -10,6 +10,7 @@
 {
   "version": "1.0",
   "type": "page",
+  "isGenerated": true,
   "metadata": {
     "title": "页面标题",
     "description": "页面描述"
@@ -38,7 +39,8 @@
   "style": {
     // 样式属性
   },
-  "text": "文本内容",
+  "content": "文本内容（推荐使用）",
+  "text": "文本内容（兼容旧版本）",
   "src": "图片地址",
   "placeholder": "占位提示",
   "children": []
@@ -496,11 +498,13 @@
 |------|------|------|------|
 | version | string | 是 | 版本号，固定 "1.0" |
 | type | string | 是 | 文档类型，固定 "page" |
+| isGenerated | boolean | 否 | 是否是AI生成的，true表示AI生成，内容不可编辑 |
 | metadata | object | 否 | 页面元数据 |
 | style | object | 是 | 页面/组件样式 |
 | children | array | 否 | 子组件数组 |
 | id | string | 是 | 唯一标识符 |
 | name | string | 否 | 组件名称（用于显示） |
-| text | string | 否 | 文本内容（text/button 类型） |
+| content | string | 否 | 文本内容（text/button/card类型组件使用content字段） |
+| text | string | 否 | 文本内容（同content，用于兼容） |
 | src | string | 否 | 图片地址（image 类型） |
 | placeholder | string | 否 | 占位提示（input 类型） |

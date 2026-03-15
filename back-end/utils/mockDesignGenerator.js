@@ -118,6 +118,7 @@ function createBasePage() {
   return {
     version: "1.0",
     type: "design-json",
+    isGenerated: true,
     root: {
       id: generateId('page'),
       type: "page",
@@ -144,6 +145,7 @@ function createLoginPage() {
   return {
     version: "1.0",
     type: "design-json",
+    isGenerated: true,
     root: {
       id: generateId('page'),
       type: "page",
@@ -245,6 +247,7 @@ function createRegisterPage() {
   return {
     version: "1.0",
     type: "design-json",
+    isGenerated: true,
     root: {
       id: generateId('page'),
       type: "page",
@@ -374,6 +377,7 @@ function createDashboardPage() {
   return {
     version: "1.0",
     type: "design-json",
+    isGenerated: true,
     root: {
       id: generateId('page'),
       type: "page",
@@ -595,6 +599,7 @@ function createCardListPage() {
   return {
     version: "1.0",
     type: "design-json",
+    isGenerated: true,
     root: {
       id: generateId('page'),
       type: "page",
