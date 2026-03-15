@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import './VisualEditor.css';
 import DesignRenderer from '../DesignRenderer/DesignRenderer';
 import useSelection from '../../hooks/useSelection';
@@ -203,6 +204,48 @@ const VisualEditor = ({
   }, [designJson, onSave]);
 
   /**
+   * 导出设计稿为图片
+   */
+  const handleExportImage = useCallback(async () => {
+    const canvasElement = document.querySelector('.design-renderer');
+    if (!canvasElement) {
+      showToast('未找到设计稿元素', 'error');
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(canvasElement, {
+        backgroundColor: '#ffffff',
+        scale: 2
+      });
+      
+      const link = document.createElement('a');
+      link.download = `design-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      showToast('图片导出成功！', 'success');
+    } catch (error) {
+      console.error('导出图片失败:', error);
+      showToast('导出图片失败', 'error');
+    }
+  }, [showToast]);
+
+  /**
+   * 复制 JSON 数据到剪贴板
+   */
+  const handleCopyJson = useCallback(() => {
+    const jsonString = JSON.stringify(convertToNewFormat(designJson), null, 2);
+    
+    navigator.clipboard.writeText(jsonString).then(() => {
+      showToast('JSON 数据已复制到剪贴板！', 'success');
+    }).catch((error) => {
+      console.error('复制失败:', error);
+      showToast('复制失败', 'error');
+    });
+  }, [designJson, showToast]);
+
+  /**
    * 处理图片上传
    */
   const handleImageFileUpload = useCallback(async (e) => {
@@ -375,6 +418,23 @@ const VisualEditor = ({
             title="保存 (Ctrl+S)"
           >
             {isSaving ? '保存中...' : '保存'}
+          </button>
+        </div>
+        
+        <div className="toolbar-group">
+          <button 
+            className="toolbar-btn" 
+            onClick={handleExportImage}
+            title="导出为图片"
+          >
+            导出图片
+          </button>
+          <button 
+            className="toolbar-btn" 
+            onClick={handleCopyJson}
+            title="复制 JSON 数据"
+          >
+            复制 JSON
           </button>
         </div>
         
