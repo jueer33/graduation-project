@@ -4,6 +4,7 @@ import DesignRenderer from '../DesignRenderer/DesignRenderer';
 import useSelection from '../../hooks/useSelection';
 import useHistory from '../../hooks/useHistory';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
+import { useToast } from '../Toast/ToastContext';
 import { 
   updateNode, 
   removeNode, 
@@ -31,6 +32,8 @@ const VisualEditor = ({
   onSave = () => {},
   isSaving = false
 }) => {
+  const { showToast } = useToast();
+  
   // 使用 ref 来跟踪初始 designJson 的变化
   const initialDesignJsonRef = useRef(initialDesignJson);
   const isPropChangeRef = useRef(false);
@@ -210,7 +213,7 @@ const VisualEditor = ({
     if (result.success) {
       handleUpdateNode(selectedId, { src: result.data });
     } else {
-      alert(result.error);
+      showToast(result.error, 'error');
     }
     
     // 清空input以便可以重复选择同一文件
@@ -233,7 +236,7 @@ const VisualEditor = ({
         backgroundRepeat: 'no-repeat'
       });
     } else {
-      alert(result.error);
+      showToast(result.error, 'error');
     }
     
     // 清空input以便可以重复选择同一文件
@@ -333,7 +336,7 @@ const VisualEditor = ({
             disabled={!canUndo}
             title="撤销 (Ctrl+Z)"
           >
-            ↩️ 撤销
+            撤销
           </button>
           <button 
             className="toolbar-btn" 
@@ -341,7 +344,7 @@ const VisualEditor = ({
             disabled={!canRedo}
             title="重做 (Ctrl+Y)"
           >
-            ↪️ 重做
+            重做
           </button>
         </div>
         
@@ -352,7 +355,7 @@ const VisualEditor = ({
             disabled={!hasSelection}
             title="复制 (Ctrl+D)"
           >
-            📋 复制
+            复制
           </button>
           <button 
             className="toolbar-btn danger" 
@@ -360,7 +363,7 @@ const VisualEditor = ({
             disabled={!hasSelection}
             title="删除 (Delete)"
           >
-            🗑️ 删除
+            删除
           </button>
         </div>
         
@@ -371,7 +374,7 @@ const VisualEditor = ({
             disabled={isSaving}
             title="保存 (Ctrl+S)"
           >
-            {isSaving ? '⏳ 保存中...' : '💾 保存'}
+            {isSaving ? '保存中...' : '保存'}
           </button>
         </div>
         
@@ -386,44 +389,7 @@ const VisualEditor = ({
 
       {/* 主编辑区域 */}
       <div className="visual-editor-main">
-        {/* 左侧组件库 */}
-        <div className="visual-editor-sidebar">
-          <div className="sidebar-section">
-            <h3 className="sidebar-title-component">组件库</h3>
-            <div className="component-list">
-              <div className="component-item" onClick={() => handleAddComponent('container')}>
-                <span className="component-icon">📦</span>
-                <span className="component-name">容器</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('text')}>
-                <span className="component-icon">📝</span>
-                <span className="component-name">文本</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('button')}>
-                <span className="component-icon">🔘</span>
-                <span className="component-name">按钮</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('image')}>
-                <span className="component-icon">🖼️</span>
-                <span className="component-name">图片</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('input')}>
-                <span className="component-icon">📥</span>
-                <span className="component-name">输入框</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('card')}>
-                <span className="component-icon">🃏</span>
-                <span className="component-name">卡片</span>
-              </div>
-              <div className="component-item" onClick={() => handleAddComponent('divider')}>
-                <span className="component-icon">➖</span>
-                <span className="component-name">分割线</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 中间画布区域 */}
+        {/* 左侧画布区域 */}
         <div className="visual-editor-canvas">
           <DesignRenderer
             designJson={designJson}
@@ -434,29 +400,58 @@ const VisualEditor = ({
           />
         </div>
 
-        {/* 右侧属性面板 */}
-        <div className="visual-editor-properties" onClick={(e) => e.stopPropagation()}>
-          <div className="properties-panel">
-            <h3 className="properties-title">属性面板</h3>
-            
-            {selectedNode ? (
-              <div className="properties-content">
-                {/* 基础属性 */}
-                <div className="property-section">
-                  <h4 className="property-section-title">基础属性</h4>
-                  <div className="property-field">
-                    <label>ID</label>
-                    <input type="text" value={selectedNode.id} disabled />
-                  </div>
-                  <div className="property-field">
-                    <label>类型</label>
-                    <input type="text" value={selectedNode.type} disabled />
-                  </div>
-                  <div className="property-field">
-                    <label>名称</label>
-                    <input 
-                      type="text" 
-                      value={selectedNode.name || ''}
+        {/* 右侧：组件库 + 属性面板 */}
+        <div className="visual-editor-right">
+          {/* 组件库 - 紧凑水平排列 */}
+          <div className="visual-editor-sidebar">
+            <div className="component-list">
+              <div className="component-item compact" onClick={() => handleAddComponent('container')} title="容器">
+                容器
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('text')} title="文本">
+                文本
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('button')} title="按钮">
+                按钮
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('image')} title="图片">
+                图片
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('input')} title="输入框">
+                输入框
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('card')} title="卡片">
+                卡片
+              </div>
+              <div className="component-item compact" onClick={() => handleAddComponent('divider')} title="分割线">
+                分割线
+              </div>
+            </div>
+          </div>
+
+          {/* 右侧属性面板 */}
+          <div className="visual-editor-properties" onClick={(e) => e.stopPropagation()}>
+            <div className="properties-panel">
+              <h3 className="properties-title">属性面板</h3>
+              
+              {selectedNode ? (
+                <div className="properties-content">
+                  {/* 基础属性 */}
+                  <div className="property-section">
+                    <h4 className="property-section-title">基础属性</h4>
+                    <div className="property-field">
+                      <label>ID</label>
+                      <input type="text" value={selectedNode.id} disabled />
+                    </div>
+                    <div className="property-field">
+                      <label>类型</label>
+                      <input type="text" value={selectedNode.type} disabled />
+                    </div>
+                    <div className="property-field">
+                      <label>名称</label>
+                      <input 
+                        type="text" 
+                        value={selectedNode.name || ''}
                       onChange={(e) => handleUpdateNode(selectedId, { name: e.target.value })}
                       placeholder="组件名称"
                     />
@@ -811,6 +806,7 @@ const VisualEditor = ({
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

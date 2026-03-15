@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
+import { useToast } from '../Toast/ToastContext';
 import './ImageUpload.css';
 
 const ImageUpload = ({ onUpload, loading = false }) => {
+  const { showToast } = useToast();
+  
   const fileInputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -10,7 +13,7 @@ const ImageUpload = ({ onUpload, loading = false }) => {
     if (!file) return;
     
     if (!file.type.startsWith('image/')) {
-      alert('请上传图片文件');
+      showToast('请上传图片文件', 'warning');
       return;
     }
 

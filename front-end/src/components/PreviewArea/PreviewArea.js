@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../store/store';
+import { useToast } from '../Toast/ToastContext';
 import DesignPreview from '../DesignPreview/DesignPreview';
 import CodePreview from '../CodePreview/CodePreview';
 import VisualEditor from '../VisualEditor';
@@ -9,6 +10,8 @@ import { historyAPI } from '../../services/api';
 import './PreviewArea.css';
 
 const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
+  const { showToast } = useToast();
+  
   const {
     previewState,
     currentDesignJson,
@@ -144,10 +147,10 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
       resetDesignModified();
 
       // 显示保存成功提示
-      alert('设计稿已保存！');
+      showToast('设计稿已保存！', 'success');
     } catch (error) {
       console.error('保存失败:', error);
-      alert('保存失败，请重试');
+      showToast('保存失败，请重试', 'error');
     } finally {
       setIsSaving(false);
     }

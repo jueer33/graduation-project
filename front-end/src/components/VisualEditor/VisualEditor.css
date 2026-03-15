@@ -87,35 +87,47 @@
   overflow: hidden;
 }
 
-/* 左侧组件库 */
-.visual-editor-sidebar {
-  width: 130px;
+/* 左侧画布区域 */
+.visual-editor-canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  min-width: 320px;
+  min-height: 400px;
+}
+
+/* 右侧区域：组件库 + 属性面板 */
+.visual-editor-right {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  min-width: 200px;
+  max-width: 300px;
   background-color: var(--bg-primary);
-  border-right: 1px solid var(--border-primary);
-  overflow-y: auto;
+  border-left: 1px solid var(--border-primary);
+  overflow: hidden;
 }
 
-.sidebar-section {
-  padding: 16px;
-}
-
-.sidebar-title-component {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-align: center;
+/* 组件库 - 紧凑水平排列 */
+.visual-editor-sidebar {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-primary);
+  flex-shrink: 0;
 }
 
 .component-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-start;
 }
 
 .component-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--border-primary);
@@ -130,8 +142,15 @@
   background-color: var(--primary-light);
 }
 
+.component-item.compact {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font-size: 12px;
+}
+
 .component-icon {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .component-name {
@@ -139,20 +158,11 @@
   color: var(--text-primary);
 }
 
-/* 中间画布区域 */
-.visual-editor-canvas {
-  flex: 1;
-  overflow: auto;
-  padding: 20px;
-  background-color: var(--bg-secondary);
-}
-
 /* 右侧属性面板 */
 .visual-editor-properties {
-  width: 220px;
-  background-color: var(--bg-primary);
-  border-left: 1px solid var(--border-primary);
+  flex: 1;
   overflow-y: auto;
+  min-height: 200px;
 }
 
 .properties-panel {

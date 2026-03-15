@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
+import { useToast } from '../Toast/ToastContext';
 import { historyAPI } from '../../services/api';
 import SidebarHistory from './SidebarHistory';
 import './Sidebar.css';
@@ -13,6 +14,8 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
+  const { showToast } = useToast();
+  
   const { currentModule, setCurrentModule, sidebarCollapsed, setSidebarCollapsed, toggleTheme, theme, user, logoutUser, loginUser, token, currentHistoryId, currentDesignJson, getCurrentConversations, addHistory, resetDesignModified, currentCode, generateNewSession, currentSessionId } = useAppStore();
   const [isAutoCollapsed, setIsAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -55,13 +58,13 @@ const Sidebar = () => {
     
     // 检查文件类型
     if (!file.type.startsWith('image/')) {
-      alert('请选择图片文件');
+      showToast('请选择图片文件', 'warning');
       return;
     }
-    
+
     // 检查文件大小（最大5MB）
     if (file.size > 5 * 1024 * 1024) {
-      alert('图片大小不能超过5MB');
+      showToast('图片大小不能超过5MB', 'warning');
       return;
     }
     
@@ -79,7 +82,7 @@ const Sidebar = () => {
       }
     } catch (error) {
       console.error('头像上传失败:', error);
-      alert('头像上传失败，请重试');
+      showToast('头像上传失败，请重试', 'error');
     }
     setShowUserMenu(false);
   };

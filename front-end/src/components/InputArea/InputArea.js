@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useToast } from '../Toast/ToastContext';
 import './InputArea.css';
 
 const InputArea = ({ 
@@ -9,6 +10,8 @@ const InputArea = ({
   allowEmptySubmit = false,
   onImageSelect
 }) => {
+  const { showToast } = useToast();
+  
   const [input, setInput] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -47,14 +50,14 @@ const InputArea = ({
     // 检查总数量限制
     const totalCount = selectedImages.length + files.length;
     if (totalCount > MAX_IMAGES) {
-      alert(`最多只能上传${MAX_IMAGES}张图片，您已选择${selectedImages.length}张，还能选择${MAX_IMAGES - selectedImages.length}张`);
+      showToast(`最多只能上传${MAX_IMAGES}张图片，您已选择${selectedImages.length}张，还能选择${MAX_IMAGES - selectedImages.length}张`, 'warning');
       return;
     }
 
     // 过滤非图片文件
     const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
     if (imageFiles.length === 0) {
-      alert('请选择图片文件');
+      showToast('请选择图片文件', 'warning');
       return;
     }
 
