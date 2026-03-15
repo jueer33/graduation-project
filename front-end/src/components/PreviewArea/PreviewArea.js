@@ -170,7 +170,7 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
       // 使用可视化编辑器
       return (
         <VisualEditor
-          key={JSON.stringify(currentDesignJson)}
+          key={currentHistoryId || 'visual-editor'}
           initialDesignJson={currentDesignJson}
           onChange={handleDesignChange}
           onSave={handleSaveDesign}
