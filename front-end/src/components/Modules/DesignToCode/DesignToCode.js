@@ -137,6 +137,8 @@ const DesignToCode = () => {
     };
     addConversation(userMessage, currentModule);
 
+    const allMessages = [userMessage];
+
     setLoading(true);
 
     try {
@@ -154,11 +156,10 @@ const DesignToCode = () => {
         };
         addConversation(codeMessage, currentModule);
 
-        // 更新代码到预览区
         setCurrentCode(response.code);
         setPreviewState('code');
 
-        const currentConversations = getCurrentConversations();
+        allMessages.push(codeMessage);
 
         const historyData = {
           moduleType: currentModule,
@@ -166,7 +167,7 @@ const DesignToCode = () => {
           designJson: currentDesignJson,
           generatedCode: response.code,
           framework: framework,
-          conversations: currentConversations,
+          conversations: allMessages,
           createdAt: new Date().toISOString()
         };
 

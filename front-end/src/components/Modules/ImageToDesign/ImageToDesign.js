@@ -199,6 +199,8 @@ const ImageToDesign = () => {
     };
     addConversation(userMessage, currentModule);
 
+    const allMessages = [userMessage];
+
     try {
       if (images.length > 0) {
         const formData = new FormData();
@@ -240,27 +242,18 @@ const ImageToDesign = () => {
           };
           addConversation(aiMessage, currentModule);
 
-          // 更新当前设计稿（共享设计稿）
           setCurrentDesignJson(response.designJson);
           setPreviewState('design');
 
-          // 只有在必要时才更新会话ID
-          // 避免因为会话ID变化导致对话内容丢失
-          // if (response.sessionId && response.sessionId !== activeSessionId) {
-          //   setCurrentSessionId(response.sessionId);
-          // }
+          allMessages.push(aiMessage);
 
-          // 获取当前对话内容
-          const currentConversations = getCurrentConversations();
-
-          // 准备历史记录数据
           const historyData = {
             moduleType: currentModule,
             title: response.title || (text || `图片上传（${images.length}张）`),
             userInput: text || `图片上传（${images.length}张）`,
             designJson: response.designJson,
             sessionId: response.sessionId || activeSessionId,
-            conversations: currentConversations,
+            conversations: allMessages,
             imagePaths: response.imagePaths || [],
             createdAt: new Date().toISOString()
           };

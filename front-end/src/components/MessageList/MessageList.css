@@ -27,9 +27,44 @@
 
 .message {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-start;
   max-width: 80%;
   animation: slideIn 0.3s ease;
+  gap: var(--spacing-sm);
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.message-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: white;
+}
+
+.ai-avatar {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
 }
 
 @keyframes slideIn {
@@ -45,11 +80,16 @@
 
 .message-user {
   align-self: flex-end;
+  flex-direction: row-reverse;
 }
 
 .message-assistant,
 .message-error,
 .message-warning {
+  align-self: flex-start;
+}
+
+.message-code {
   align-self: flex-start;
 }
 

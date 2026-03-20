@@ -154,13 +154,11 @@ const TextToDesign = () => {
   const handleSubmit = async (text) => {
     if (!text.trim() || isGenerating) return;
 
-    // 确保有会话ID
     let activeSessionId = currentSessionId;
     if (!activeSessionId) {
       activeSessionId = generateNewSession();
     }
 
-    // 添加用户消息
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -170,16 +168,15 @@ const TextToDesign = () => {
     addConversation(userMessage, currentModule);
     setIsGenerating(true);
 
+    const allMessages = [userMessage];
+
     try {
-      // 使用 ref 获取最新的设计稿，避免闭包问题
       const latestDesignJson = currentDesignJsonRef.current;
       console.log('发送请求时的 Design JSON:', latestDesignJson ? '存在' : '不存在');
       
-      // 调用 AI API 生成设计稿，传递会话ID和当前设计稿
       const response = await aiAPI.textToDesign(text, activeSessionId, latestDesignJson);
 
       if (response.success && response.designJson) {
-        // 先添加AI回复消息到对话
         const aiMessage = {
           id: Date.now() + 1,
           type: 'assistant',
@@ -188,27 +185,18 @@ const TextToDesign = () => {
         };
         addConversation(aiMessage, currentModule);
 
-        // 更新当前设计稿（共享设计稿）
         setCurrentDesignJson(response.designJson);
         setPreviewState('design');
 
-        // 只有在必要时才更新会话ID
-        // 避免因为会话ID变化导致对话内容丢失
-        // if (response.sessionId && response.sessionId !== activeSessionId) {
-        //   setCurrentSessionId(response.sessionId);
-        // }
+        allMessages.push(aiMessage);
 
-        // 获取当前对话内容
-        const currentConversations = getCurrentConversations();
-
-        // 准备历史记录数据
         const historyData = {
           moduleType: currentModule,
           title: response.title || text,
           userInput: text,
           designJson: response.designJson,
           sessionId: response.sessionId || activeSessionId,
-          conversations: currentConversations,
+          conversations: allMessages,
           createdAt: new Date().toISOString()
         };
 

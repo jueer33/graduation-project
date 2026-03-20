@@ -96,17 +96,23 @@ export const AppProvider = ({ children }) => {
   const updateSession = useCallback((sessionId, updates) => {
     console.log('store: updating session:', sessionId, 'updates:', updates);
     setSessions(prev => {
+      const currentSession = prev[sessionId] || {
+        designJson: null,
+        code: null,
+        previewState: 'design',
+        isModified: false,
+        conversations: []
+      };
+      
+      const resolvedUpdates = typeof updates === 'function' 
+        ? updates(currentSession) 
+        : updates;
+      
       const updatedSessions = {
         ...prev,
         [sessionId]: {
-          ...(prev[sessionId] || {
-            designJson: null,
-            code: null,
-            previewState: 'design',
-            isModified: false,
-            conversations: []
-          }),
-          ...updates
+          ...currentSession,
+          ...resolvedUpdates
         }
       };
       console.log('store: updated sessions:', updatedSessions);
@@ -165,23 +171,15 @@ export const AppProvider = ({ children }) => {
 
   // 添加对话
   const addConversation = useCallback((message, moduleType) => {
-    // 如果没有会话ID，自动生成一个
     let sessionId = currentSessionId;
     if (!sessionId) {
       sessionId = generateNewSession();
     }
     
-    const session = sessions[sessionId] || {
-      designJson: null,
-      code: null,
-      previewState: 'design',
-      isModified: false,
-      conversations: []
-    };
-    updateSession(sessionId, {
-      conversations: [...session.conversations, message]
-    });
-  }, [currentSessionId, sessions, updateSession, generateNewSession]);
+    updateSession(sessionId, (prevSession) => ({
+      conversations: [...(prevSession?.conversations || []), message]
+    }));
+  }, [currentSessionId, updateSession, generateNewSession]);
 
   // 清空对话
   const clearConversations = useCallback((moduleType) => {

@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
 import './DesignMessage.css';
 
-/**
- * 设计消息组件
- * 显示 AI 生成的设计稿相关信息
- * 
- * @param {Object} props
- * @param {Object} props.message - 消息对象
- */
 const DesignMessage = ({ message }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { designJson, content } = message;
 
-  // 格式化JSON显示
   const formatJson = (json) => {
     try {
       return JSON.stringify(json, null, 2);
@@ -22,12 +14,20 @@ const DesignMessage = ({ message }) => {
   };
 
   return (
-    <div className="design-message">
-      {content && (
-        <div className="design-message-content">{content}</div>
-      )}
+    <div className="message message-assistant">
+      <div className="message-avatar ai-avatar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"></path>
+          <circle cx="7.5" cy="14.5" r="1.5"></circle>
+          <circle cx="16.5" cy="14.5" r="1.5"></circle>
+        </svg>
+      </div>
+      <div className="message-body">
+        {content && (
+          <div className="design-message-content">{content}</div>
+        )}
 
-      <div className="design-message-card">
+        <div className="design-message-card">
         <div className="design-message-header">
           <span className="design-message-icon">🎨</span>
           <span className="design-message-title">设计稿已生成</span>
@@ -50,6 +50,7 @@ const DesignMessage = ({ message }) => {
           <span className="hint-text">设计稿已显示在上方预览区域</span>
         </div>
       </div>
+    </div>
     </div>
   );
 };
