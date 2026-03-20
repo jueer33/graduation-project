@@ -32,27 +32,6 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
 
   const histories = getCurrentHistories();
 
-  // 加载历史记录列表
-  const loadHistories = useCallback(async () => {
-    try {
-      const response = await historyAPI.getList(1, 20);
-      if (response.success) {
-        const filtered = response.data.filter(h => h.moduleType === currentModule);
-        setHistoriesForModule(filtered, currentModule);
-        // console.log('历史记录已加载:', filtered.length, '条');
-        return filtered;
-      }
-    } catch (error) {
-      console.error('加载历史记录失败:', error);
-    }
-    return [];
-  }, [currentModule, setHistoriesForModule]);
-
-  // 当模块变化时加载历史记录
-  useEffect(() => {
-    loadHistories();
-  }, [loadHistories]);
-
   if (previewState === 'hidden') {
     return null;
   }

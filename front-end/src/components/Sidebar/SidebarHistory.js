@@ -35,7 +35,7 @@ const SidebarHistory = () => {
     const loadHistories = async () => {
       setLoading(true);
       try {
-        const response = await historyAPI.getList(1, 10);
+        const response = await historyAPI.getList(1, 20);
         if (response.success) {
           const filtered = response.data.filter(h => h.moduleType === currentModule);
           setHistoriesForModule(filtered, currentModule);
@@ -48,8 +48,7 @@ const SidebarHistory = () => {
     };
     
     loadHistories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentModule]);
+  }, [currentModule, setHistoriesForModule]);
 
   const handleRestore = async (history) => {
     try {
@@ -131,7 +130,7 @@ const SidebarHistory = () => {
     } catch (error) {
       console.error('删除失败:', error);
       // 如果后端删除失败，重新加载历史记录
-      const response = await historyAPI.getList(1, 10);
+      const response = await historyAPI.getList(1, 20);
       if (response.success) {
         const filtered = response.data.filter(h => h.moduleType === currentModule);
         setHistoriesForModule(filtered, currentModule);
