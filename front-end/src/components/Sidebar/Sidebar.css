@@ -40,7 +40,7 @@
 }
 
 .sidebar-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;

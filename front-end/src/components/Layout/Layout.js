@@ -17,7 +17,7 @@ const Layout = () => {
   const navigate = useNavigate();
   
   // 拖拽调整大小相关状态
-  const [conversationWidth, setConversationWidth] = useState(50); // 百分比
+  const [conversationWidth, setConversationWidth] = useState(33); // 百分比，默认33%（1/3）
   const [isResizing, setIsResizing] = useState(false);
   const layoutMainRef = useRef(null);
 
@@ -83,8 +83,8 @@ const Layout = () => {
     const percentage = (x / rect.width) * 100;
     
     // 限制最小和最大宽度
-    const minWidth = 25; // 最小25%
-    const maxWidth = 75; // 最大75%
+    const minWidth = 20; // 最小20%
+    const maxWidth = 50; // 最大50%
     const clampedPercentage = Math.max(minWidth, Math.min(maxWidth, percentage));
     
     setConversationWidth(clampedPercentage);

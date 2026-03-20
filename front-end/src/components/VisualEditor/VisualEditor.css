@@ -101,12 +101,42 @@
 .visual-editor-right {
   display: flex;
   flex-direction: column;
-  width: 240px;
   min-width: 200px;
-  max-width: 300px;
+  max-width: 400px;
   background-color: var(--bg-primary);
   border-left: 1px solid var(--border-primary);
   overflow: hidden;
+}
+
+/* 画布与属性面板之间的可拖拽分隔线 */
+.visual-editor-canvas-resize-handle {
+  width: 6px;
+  background: transparent;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.visual-editor-canvas-resize-handle:hover,
+.visual-editor-canvas-resize-handle.active {
+  background: var(--primary-light);
+}
+
+.visual-editor-canvas-resize-handle .resize-indicator {
+  width: 2px;
+  height: 40px;
+  background: var(--border-primary);
+  border-radius: 1px;
+  transition: background-color 0.2s;
+}
+
+.visual-editor-canvas-resize-handle:hover .resize-indicator,
+.visual-editor-canvas-resize-handle.active .resize-indicator {
+  background: var(--primary);
 }
 
 /* 组件库 - 紧凑水平排列 */
@@ -115,6 +145,15 @@
   border-bottom: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   flex-shrink: 0;
+}
+
+.component-library-title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .component-list {

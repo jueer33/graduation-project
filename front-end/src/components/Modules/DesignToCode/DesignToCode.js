@@ -221,7 +221,9 @@ const DesignToCode = () => {
 
   return (
     <div className="design-to-code">
-      <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
+      <div className="conversation-container">
+        <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
+      </div>
       <div className="code-generator">
         <FrameworkSelector value={framework} onChange={setFramework} />
         <InputArea

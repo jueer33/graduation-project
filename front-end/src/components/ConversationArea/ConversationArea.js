@@ -23,7 +23,64 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
     setCurrentHistoryId
   } = useAppStore();
 
+  const [isDragging, setIsDragging] = React.useState(false);
+  const fabRef = React.useRef(null);
+  const hasMovedRef = React.useRef(false);
+
+  const handleFabMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    hasMovedRef.current = false;
+  };
+
+  React.useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      if (!hasMovedRef.current) {
+        startX = e.clientX;
+        startY = e.clientY;
+        hasMovedRef.current = true;
+      }
+
+      const container = fabRef.current?.parentElement;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const rect = fabRef.current.getBoundingClientRect();
+      const newX = e.clientX - containerRect.left - (startX - rect.left);
+      const newY = e.clientY - containerRect.top - (startY - rect.top);
+      
+      const maxX = containerRect.width - 60;
+      const maxY = containerRect.height - 60;
+      
+      if (fabRef.current) {
+        fabRef.current.style.left = `${Math.max(0, Math.min(maxX, newX))}px`;
+        fabRef.current.style.top = `${Math.max(0, Math.min(maxY, newY))}px`;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   const handleNewConversation = async () => {
+    if (isDragging || hasMovedRef.current) return;
+    
     const conversations = getCurrentConversations();
     const hasContent = conversations.length > 0 || currentDesignJson || currentCode;
 
@@ -34,13 +91,10 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
     }
 
     try {
-      // 保存当前对话为历史记录
-      // 获取第一个用户消息作为userInput
       const firstUserMessage = conversations.find(m => m.type === 'user');
       const userInput = firstUserMessage?.content ||
                        (firstUserMessage?.image ? '上传图片' : '');
 
-      // 确定framework
       let framework = null;
       if (currentCode && currentCode.type) {
         framework = currentCode.type;
@@ -55,9 +109,7 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
         framework: framework
       };
 
-      // 如果有历史记录ID，更新原有记录；否则创建新记录
       if (currentHistoryId) {
-        // 更新现有历史记录
         try {
           await historyAPI.update(currentHistoryId, saveData);
           console.log('历史记录已更新:', currentHistoryId);
@@ -65,8 +117,6 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
           console.error('更新历史记录失败:', error);
         }
       } else {
-        // 创建新历史记录
-        // 先更新前端状态
         const newHistory = {
           ...saveData,
           _id: `temp_${Date.now()}`,
@@ -75,22 +125,18 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
         };
         addHistory(newHistory, currentModule);
 
-        // 然后同步到后端
         try {
           const response = await historyAPI.create(saveData);
           if (response.success && response.data) {
-            // 更新为真实的ID
             removeHistory(newHistory._id, currentModule);
             addHistory(response.data, currentModule);
           }
         } catch (error) {
           console.error('保存历史记录失败:', error);
-          // 如果后端保存失败，移除前端临时记录
           removeHistory(newHistory._id, currentModule);
         }
       }
 
-      // 清空当前对话和预览内容
       clearConversations();
       setCurrentDesignJson(null);
       setCurrentCode(null);
@@ -100,6 +146,19 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
       console.error('新建对话失败:', error);
       clearConversations();
       setCurrentHistoryId(null);
+    }
+  };
+
+  const getModuleTitle = () => {
+    switch (currentModule) {
+      case 'text-to-design':
+        return '文本生成设计';
+      case 'image-to-design':
+        return '图片生成设计';
+      case 'design-to-code':
+        return '设计生成代码';
+      default:
+        return '对话';
     }
   };
 
@@ -121,22 +180,20 @@ const ConversationArea = ({ showPreviewToggle, onPreviewToggle, width }) => {
       className="conversation-area"
       style={width ? { flex: `0 0 ${width}%` } : { flex: 1 }}
     >
-      <div className="conversation-area-header">
+      <div className="conversation-header">
+        <span className="conversation-header-title">{getModuleTitle()}</span>
         <button
-          className="new-conversation-btn"
+          ref={fabRef}
+          className={`fab-button ${isDragging ? 'dragging' : ''}`}
+          onMouseDown={handleFabMouseDown}
           onClick={handleNewConversation}
           title="新建对话"
         >
-          ➕ 新建对话
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
         </button>
-        {showPreviewToggle && (
-          <button
-            className="preview-toggle-btn"
-            onClick={onPreviewToggle}
-          >
-            预览
-          </button>
-        )}
       </div>
       <div className="conversation-content">
         {renderModule()}

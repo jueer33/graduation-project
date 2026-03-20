@@ -177,7 +177,7 @@ const SidebarHistory = () => {
         ) : histories.length === 0 ? (
           <div className="sidebar-history-empty">暂无记录</div>
         ) : (
-          histories.slice(0, 5).map(history => (
+          histories.map(history => (
             <div
               key={history._id}
               className={`sidebar-history-item ${history._id === currentHistoryId ? 'active' : ''}`}

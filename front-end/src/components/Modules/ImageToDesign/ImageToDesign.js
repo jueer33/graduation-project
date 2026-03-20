@@ -419,7 +419,9 @@ const ImageToDesign = () => {
 
   return (
     <div className="image-to-design">
-      <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
+      <div className="conversation-container">
+        <MessageList messages={conversations} onPreviewDesign={handlePreviewDesign} />
+      </div>
       <InputArea
         onSubmit={handleSubmit}
         loading={isGenerating}

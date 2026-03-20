@@ -12,6 +12,8 @@
   overflow-y: auto;
   padding: 16px;
   background: var(--bg-primary, #fff);
+  display: flex;
+  flex-direction: column;
 }
 
 /* 暗色模式适配 */

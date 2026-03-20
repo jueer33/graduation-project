@@ -45,6 +45,11 @@ const VisualEditor = ({
     return normalizeToOldFormat(json);
   });
 
+  // 右侧面板宽度状态
+  const [rightPanelWidth, setRightPanelWidth] = useState(240);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+  const rightPanelRef = useRef(null);
+
   // 当 initialDesignJson 变化时更新内部状态（但不重置选中状态）
   useEffect(() => {
     console.log('VisualEditor: initialDesignJson changed:', initialDesignJson);
@@ -82,6 +87,42 @@ const VisualEditor = ({
       }
     }
   }, [historyState, designJson, onChange]);
+
+  // 右侧面板拖拽调整宽度
+  const handleRightResizeStart = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingRight(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  const handleRightResizeMove = useCallback((e) => {
+    if (!isResizingRight || !rightPanelRef.current) return;
+    
+    const rect = rightPanelRef.current.getBoundingClientRect();
+    const x = rect.right - e.clientX;
+    const newWidth = Math.max(200, Math.min(400, x));
+    setRightPanelWidth(newWidth);
+  }, [isResizingRight]);
+
+  const handleRightResizeEnd = useCallback(() => {
+    setIsResizingRight(false);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  useEffect(() => {
+    if (isResizingRight) {
+      document.addEventListener('mousemove', handleRightResizeMove);
+      document.addEventListener('mouseup', handleRightResizeEnd);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleRightResizeMove);
+      document.removeEventListener('mouseup', handleRightResizeEnd);
+    };
+  }, [isResizingRight, handleRightResizeMove, handleRightResizeEnd]);
 
   // 使用选中管理
   const {
@@ -460,10 +501,24 @@ const VisualEditor = ({
           />
         </div>
 
+        {/* 可拖拽分隔线 */}
+        <div 
+          className={`visual-editor-canvas-resize-handle ${isResizingRight ? 'active' : ''}`}
+          onMouseDown={handleRightResizeStart}
+          title="拖动调整宽度"
+        >
+          <div className="resize-indicator"></div>
+        </div>
+
         {/* 右侧：组件库 + 属性面板 */}
-        <div className="visual-editor-right">
+        <div 
+          className="visual-editor-right"
+          ref={rightPanelRef}
+          style={{ width: rightPanelWidth }}
+        >
           {/* 组件库 - 紧凑水平排列 */}
           <div className="visual-editor-sidebar">
+            <h3 className="component-library-title">组件库</h3>
             <div className="component-list">
               <div className="component-item compact" onClick={() => handleAddComponent('container')} title="容器">
                 容器

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
 import { authAPI } from '../../services/api';
 import './Login.css';
 
 const Login = () => {
   const { loginUser } = useAppStore();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +24,7 @@ const Login = () => {
         : await authAPI.register(email, password);
       
       loginUser(response.user, response.token);
+      navigate('/text-to-design');
     } catch (err) {
       setError(err.message || '操作失败，请重试');
     } finally {
@@ -32,7 +35,7 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-box">
-        <h1 className="login-title">AI代码生成系统</h1>
+        <h1 className="login-title">Forma AI</h1>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
             <label htmlFor="email">邮箱</label>

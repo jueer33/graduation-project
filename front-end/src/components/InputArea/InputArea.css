@@ -112,6 +112,14 @@
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
+.input-textarea.has-upload-btn {
+  padding-left: 40px;
+}
+
+.input-textarea:not(.has-upload-btn) {
+  padding-left: var(--spacing-md);
+}
+
 .input-textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -161,19 +169,28 @@
 }
 
 .input-upload-btn {
-  background: none;
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
   border: none;
-  font-size: 20px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: 50%;
   cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: var(--transition);
   flex-shrink: 0;
-  position: relative;
+  padding: 0;
+  z-index: 1;
 }
 
 .input-upload-btn:hover {
   background-color: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .upload-count {

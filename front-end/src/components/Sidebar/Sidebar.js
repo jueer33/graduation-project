@@ -153,7 +153,7 @@ const Sidebar = () => {
   return (
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        {!collapsed && <h2 className="sidebar-title">AI代码生成</h2>}
+        {!collapsed && <h2 className="sidebar-title">Forma AI</h2>}
         <div className="sidebar-header-actions">
           {!collapsed && (
             <button className="sidebar-toggle theme-toggle" onClick={toggleTheme} title={theme === 'light' ? '切换暗色' : '切换亮色'}>

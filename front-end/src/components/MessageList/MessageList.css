@@ -14,7 +14,15 @@
 
 .empty-message {
   color: var(--text-tertiary);
-  font-size: 14px;
+  font-size: var(--font-md);
+  font-weight: 500;
+  margin-bottom: var(--spacing-xs);
+}
+
+.empty-hint {
+  color: var(--text-tertiary);
+  font-size: var(--font-sm);
+  opacity: 0.7;
 }
 
 .message {
