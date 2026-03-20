@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const auth = require('../middleware/auth');
-const { generateDesignJson, generateHistoryTitle, streamDesignJson } = require('../services/qwenService');
+const { generateDesignJson, generateDesignJsonFromImages, generateHistoryTitle, streamDesignJson } = require('../services/qwenService');
 const conversationManager = require('../utils/conversationManager');
 
 const router = express.Router();
@@ -168,36 +168,34 @@ router.post('/image-to-design', auth, (req, res, next) => {
     // 获取对话历史
     const history = conversationManager.getHistory(userId, activeSessionId);
 
-    // 构建包含图片信息的提示
-    let prompt = text || '根据上传的图片生成设计稿';
-    if (images.length > 0) {
-      prompt += `\n[用户上传了 ${images.length} 张图片作为参考]`;
-      // 添加图片路径信息，以便AI能够参考
-      imagePaths.forEach((path, index) => {
-        prompt += `\n图片 ${index + 1} 路径: ${path}`;
-      });
-      
-      // 添加base64图片数据，使AI能够直接分析图片内容
-      if (imageBase64Array.length > 0) {
-        prompt += '\n[图片base64数据如下，用于分析图片内容]';
-        imageBase64Array.forEach((base64, index) => {
-          // 只包含base64数据的前缀，避免数据过长
-          const base64Prefix = base64.substring(0, 100) + '...';
-          prompt += `\n图片 ${index + 1} base64: ${base64Prefix}`;
-        });
+    // 解析 currentDesignJson
+    let parsedCurrentDesignJson = null;
+    try {
+      if (currentDesignJson) {
+        parsedCurrentDesignJson = typeof currentDesignJson === 'string' 
+          ? JSON.parse(currentDesignJson) 
+          : currentDesignJson;
       }
+    } catch (error) {
+      console.error('解析 currentDesignJson 失败:', error);
     }
 
-    // 添加用户消息到历史
-    conversationManager.addUserMessage(userId, activeSessionId, prompt);
+    console.log(`接收到 ${images.length} 张图片，调用千问视觉模型 API...`);
+    console.log('图片 base64 数量:', imageBase64Array.length);
 
-    console.log(`接收到 ${images.length} 张图片，调用千问 API...`);
-    console.log('图片相对路径:', imagePaths);
+    // 调用千问视觉模型 API 生成 Design JSON
+    const result = await generateDesignJsonFromImages(
+      text || '根据上传的图片生成对应的设计稿',
+      imageBase64Array,
+      history,
+      parsedCurrentDesignJson
+    );
 
-    // 调用千问 API 生成 Design JSON
-    // 注意：当前千问 qwen-turbo 不支持图片输入，这里仅使用文字描述
-    // 如需支持图片，需要使用支持视觉的模型如 qwen-vl
-    const result = await generateDesignJson(prompt, history, currentDesignJson);
+    // 添加用户消息到历史（简短描述）
+    const userMessage = images.length > 0 
+      ? `上传了 ${images.length} 张图片${text ? ': ' + text : ''}`
+      : text;
+    conversationManager.addUserMessage(userId, activeSessionId, userMessage);
 
     // 添加助手消息到历史
     conversationManager.addAssistantMessage(

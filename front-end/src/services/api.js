@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000 // 增加超时时间到60秒，因为大模型调用可能需要更长时间
+  timeout: 1000000 // 增加超时时间到60秒，因为大模型调用可能需要更长时间
 });
 
 // 请求拦截器 - 添加token

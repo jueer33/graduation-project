@@ -6,7 +6,10 @@ const openai = new OpenAI({
   baseURL: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 });
 
-const MODEL = process.env.LLM_MODEL || 'qwen-turbo';
+// 文本生成模型
+const TEXT_MODEL = process.env.LLM_MODEL || 'qwen-turbo';
+// 图片生成模型（支持视觉）- 使用 qwen-vl-plus 更稳定
+const VISION_MODEL = process.env.VISION_MODEL || 'qwen-vl-plus';
 
 /**
  * Design JSON 结构规范 Prompt
@@ -229,6 +232,43 @@ function parseDesignJson(content) {
 }
 
 /**
+ * 尝试让 AI 修复 JSON（当解析失败时）
+ * @param {string} originalContent - 原始返回内容
+ * @returns {Promise<Object|null>}
+ */
+async function retryParseWithAI(originalContent) {
+  try {
+    console.log('尝试使用 AI 修复 JSON...');
+    
+    const response = await openai.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [
+        { 
+          role: 'system', 
+          content: '你是一个 JSON 解析助手。请从以下文本中提取并返回合法的 JSON 数据。只返回 JSON，不要包含任何其他内容。' 
+        },
+        { 
+          role: 'user', 
+          content: `请解析以下内容为 JSON：\n${originalContent.substring(0, 4000)}` 
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 8000
+    });
+
+    const fixedContent = response.choices[0]?.message?.content;
+    if (fixedContent) {
+      return parseDesignJson(fixedContent);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('AI 修复 JSON 失败:', error);
+    return null;
+  }
+}
+
+/**
  * 验证 Design JSON 结构
  * @param {Object} designJson - 解析后的 Design JSON
  * @returns {boolean} 是否有效
@@ -373,10 +413,10 @@ async function generateDesignJson(prompt, history = [], currentDesignJson = null
   try {
     const messages = buildMessages(prompt, history, currentDesignJson);
 
-    console.log('调用千问 API，消息数:', messages.length);
+    console.log('调用千问 API（文本生成），消息数:', messages.length);
 
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: TEXT_MODEL,
       messages: messages,
       temperature: 0.7,
       max_tokens: 8000
@@ -393,10 +433,15 @@ async function generateDesignJson(prompt, history = [], currentDesignJson = null
     // 解析 JSON
     let designJson = parseDesignJson(content);
 
-    // 如果解析失败，尝试让模型重新生成（简化版）
+    // 如果解析失败，尝试使用 AI 修复
     if (!designJson) {
-      console.log('首次解析失败，尝试提取 JSON...');
-      // 返回一个默认的错误提示
+      console.log('首次解析失败，尝试使用 AI 修复 JSON...');
+      designJson = await retryParseWithAI(content);
+    }
+
+    // 如果仍然解析失败，抛出错误
+    if (!designJson) {
+      console.log('AI 修复 JSON 失败，返回内容预览:', content.substring(0, 500));
       throw new Error('无法解析 AI 返回的设计稿数据');
     }
 
@@ -435,6 +480,143 @@ async function generateDesignJson(prompt, history = [], currentDesignJson = null
 }
 
 /**
+ * 基于图片生成 Design JSON（使用视觉模型）
+ * @param {string} prompt - 用户输入
+ * @param {Array} imageBase64Array - 图片 base64 数组
+ * @param {Array} history - 历史消息
+ * @param {Object} currentDesignJson - 当前设计稿
+ * @returns {Promise<{designJson: Object, replyText: string}>}
+ */
+async function generateDesignJsonFromImages(prompt, imageBase64Array = [], history = [], currentDesignJson = null) {
+  try {
+    const messages = [
+      { role: 'system', content: DESIGN_JSON_SYSTEM_PROMPT }
+    ];
+
+    // 添加历史消息
+    if (history && history.length > 0) {
+      for (const msg of history) {
+        if (msg.role === 'user') {
+          messages.push({ role: 'user', content: msg.content });
+        } else if (msg.role === 'assistant') {
+          let content = msg.content;
+          if (msg.designJson) {
+            content += '\n[包含设计稿数据]';
+          }
+          messages.push({ role: 'assistant', content: content });
+        }
+      }
+    }
+
+    // 构建用户消息内容，包含图片
+    let userContent = prompt || '根据上传的图片生成对应的设计稿';
+    
+    // 如果有当前设计稿，添加到提示中
+    if (currentDesignJson) {
+      const designJsonStr = JSON.stringify(currentDesignJson, null, 2);
+      const maxLength = 8000;
+      const truncatedDesignJson = designJsonStr.length > maxLength 
+        ? designJsonStr.substring(0, maxLength) + '\n... (设计稿数据已截断)'
+        : designJsonStr;
+      
+      userContent += `\n\n【重要】当前设计稿状态（请基于图片和此设计稿进行修改）：\n\`\`\`json\n${truncatedDesignJson}\n\`\`\``;
+    }
+
+    // 构建多模态消息
+    const userMessage = {
+      role: 'user',
+      content: []
+    };
+
+    // 添加文本部分
+    userMessage.content.push({
+      type: 'text',
+      text: userContent
+    });
+
+    // 添加图片（限制最多 5 张，避免超出 token 限制）
+    const maxImages = 5;
+    const imagesToProcess = imageBase64Array.slice(0, maxImages);
+    
+    for (const base64 of imagesToProcess) {
+      userMessage.content.push({
+        type: 'image_url',
+        image_url: {
+          url: base64
+        }
+      });
+    }
+
+    messages.push(userMessage);
+
+    console.log(`调用千问视觉模型 API，图片数: ${imagesToProcess.length}, 消息数: ${messages.length}`);
+
+    const response = await openai.chat.completions.create({
+      model: VISION_MODEL,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 8000
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('千问视觉模型 API 返回空内容');
+    }
+
+    console.log('视觉模型返回内容长度:', content.length);
+
+    // 解析 JSON
+    let designJson = parseDesignJson(content);
+
+    // 如果解析失败，尝试使用 AI 修复
+    if (!designJson) {
+      console.log('首次解析失败，尝试使用 AI 修复 JSON...');
+      designJson = await retryParseWithAI(content);
+    }
+
+    // 如果仍然解析失败，抛出错误
+    if (!designJson) {
+      console.log('AI 修复 JSON 失败，返回内容预览:', content.substring(0, 500));
+      throw new Error('无法解析 AI 返回的设计稿数据');
+    }
+
+    // 验证结构
+    if (!validateDesignJson(designJson)) {
+      console.warn('Design JSON 结构不完整，尝试修复...');
+      designJson = {
+        version: '1.0',
+        type: 'page',
+        style: designJson.style || {
+          width: '100%',
+          height: '100vh',
+          backgroundColor: '#f5f5f5',
+          padding: [0, 0, 0, 0]
+        },
+        children: designJson.children || []
+      };
+    }
+
+    // 修复字段名
+    designJson = fixDesignJsonFields(designJson);
+
+    // 生成回复文本
+    const replyText = imagesToProcess.length > 1 
+      ? `已根据 ${imagesToProcess.length} 张图片生成设计稿`
+      : '已根据图片生成设计稿';
+
+    return {
+      designJson,
+      replyText
+    };
+
+  } catch (error) {
+    console.error('基于图片生成 Design JSON 失败:', error);
+    throw error;
+  }
+}
+
+/**
  * 生成历史记录标题
  * @param {string} prompt - 用户输入
  * @returns {Promise<string>}
@@ -442,7 +624,7 @@ async function generateDesignJson(prompt, history = [], currentDesignJson = null
 async function generateHistoryTitle(prompt) {
   try {
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: TEXT_MODEL,
       messages: [
         { role: 'system', content: TITLE_GENERATION_PROMPT },
         { role: 'user', content: `用户输入：${prompt}\n请生成标题：` }
@@ -477,7 +659,7 @@ async function streamDesignJson(prompt, history = [], currentDesignJson = null, 
     const messages = buildMessages(prompt, history, currentDesignJson);
 
     const stream = await openai.chat.completions.create({
-      model: MODEL,
+      model: TEXT_MODEL,
       messages: messages,
       temperature: 0.7,
       max_tokens: 8000,
@@ -566,6 +748,7 @@ function generateReplyText(prompt, designJson) {
 
 module.exports = {
   generateDesignJson,
+  generateDesignJsonFromImages,
   generateHistoryTitle,
   streamDesignJson,
   parseDesignJson,
