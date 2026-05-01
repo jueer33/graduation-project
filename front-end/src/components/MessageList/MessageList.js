@@ -50,7 +50,6 @@ const MessageList = ({ messages, loading = false }) => {
   };
 
   const renderMessage = (message) => {
-    // 如果是设计稿类型的消息，使用 DesignMessage 组件
     if (message.type === 'design') {
       return (
         <DesignMessage
@@ -59,12 +58,37 @@ const MessageList = ({ messages, loading = false }) => {
       );
     }
 
-    // 普通消息
+    if (message.type === 'code') {
+      return (
+        <div className="code-message-content">
+          <div className="code-message-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>代码已生成</span>
+            <span className="code-message-framework">{message.framework?.toUpperCase()}</span>
+          </div>
+          <div className="code-message-text">{message.content}</div>
+          <div className="code-message-file-count">
+            {message.code?.files?.length || 0} 个文件
+          </div>
+          {message.timestamp && (
+            <div className="message-time">
+              {new Date(message.timestamp).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <>
         {getAvatar(message.type)}
         <div className="message-body">
-          {/* 支持单张图片 (message.image) 或多张图片 (message.images) */}
           {message.image && (
             <div className="message-image">
               <img

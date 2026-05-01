@@ -43,6 +43,12 @@ export const AppProvider = ({ children }) => {
   // 会话状态 - 按会话ID存储
   const [sessions, setSessions] = useState({});
 
+  // 代码生成模式: 'design' | 'text' | 'image'
+  const [codeGenerationMode, setCodeGenerationMode] = useState('text');
+
+  // 从其他模块传入的待处理设计稿
+  const [pendingDesignJson, setPendingDesignJson] = useState(null);
+
   // 获取当前会话的状态
   const currentSession = useMemo(() => {
     if (!currentSessionId) return {
@@ -320,6 +326,12 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentSessionId, updateSession]);
 
+  // 清除待处理的设计稿
+  const clearPendingDesign = useCallback(() => {
+    setPendingDesignJson(null);
+    setCodeGenerationMode('text');
+  }, []);
+
   const value = {
     // 状态
     currentModule,
@@ -337,6 +349,8 @@ export const AppProvider = ({ children }) => {
     isDesignModified,
     currentSession,
     sessions,
+    codeGenerationMode,
+    pendingDesignJson,
 
     // 方法
     setCurrentModule,
@@ -363,7 +377,10 @@ export const AppProvider = ({ children }) => {
     restoreHistory,
     resetDesignModified,
     setIsGenerating,
-    updateSession
+    updateSession,
+    setCodeGenerationMode,
+    setPendingDesignJson,
+    clearPendingDesign
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

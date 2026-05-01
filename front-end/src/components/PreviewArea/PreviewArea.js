@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/store';
 import { useToast } from '../Toast/ToastContext';
 import DesignPreview from '../DesignPreview/DesignPreview';
@@ -11,6 +12,7 @@ import './PreviewArea.css';
 
 const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   
   const {
     previewState,
@@ -25,12 +27,30 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
     resetDesignModified,
     getCurrentConversations,
     setConversationsForModule,
-    currentSessionId
+    currentSessionId,
+    setPendingDesignJson,
+    setCodeGenerationMode
   } = useAppStore();
 
   const [isSaving, setIsSaving] = useState(false);
 
   const histories = getCurrentHistories();
+
+  const handleGenerateCode = useCallback(() => {
+    if (!currentDesignJson) {
+      showToast('请先生成设计稿', 'warning');
+      return;
+    }
+
+    // 保存设计稿到 pending 状态
+    setPendingDesignJson(currentDesignJson);
+    setCodeGenerationMode('design');
+
+    // 为代码生成模块创建新会话（不在当前模块创建，避免留下空会话）
+    const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    navigate(`/design-to-code/${newSessionId}`);
+    showToast('已切换到代码生成模块', 'success');
+  }, [currentDesignJson, setPendingDesignJson, setCodeGenerationMode, navigate, showToast]);
 
   if (previewState === 'hidden') {
     return null;
@@ -136,25 +156,41 @@ const PreviewArea = ({ showBackButton, onBack, width, loading = false }) => {
   };
 
   const renderContent = () => {
-    // 如果正在加载，显示骨架屏
     if (loading) {
       return <SkeletonScreen />;
     }
 
-    // console.log('PreviewArea: currentDesignJson:', currentDesignJson);
-    // console.log('PreviewArea: currentCode:', currentCode);
-    // console.log('PreviewArea: previewState:', previewState);
+    if (currentModule === 'design-to-code') {
+      if (currentCode) {
+        return <CodePreview code={currentCode} />;
+      }
+      return <Placeholder message="生成代码后将在此处预览" />;
+    }
     
     if (previewState === 'design' && currentDesignJson) {
-      // 使用可视化编辑器
       return (
-        <VisualEditor
-          key={currentHistoryId || 'visual-editor'}
-          initialDesignJson={currentDesignJson}
-          onChange={handleDesignChange}
-          onSave={handleSaveDesign}
-          isSaving={isSaving}
-        />
+        <div className="design-preview-wrapper">
+          <div className="design-preview-actions">
+            <button 
+              className="generate-code-btn"
+              onClick={handleGenerateCode}
+              title="将设计稿转换为代码"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              生成代码
+            </button>
+          </div>
+          <VisualEditor
+            key={currentHistoryId || 'visual-editor'}
+            initialDesignJson={currentDesignJson}
+            onChange={handleDesignChange}
+            onSave={handleSaveDesign}
+            isSaving={isSaving}
+          />
+        </div>
       );
     } else if (previewState === 'code' && currentCode) {
       return <CodePreview code={currentCode} />;

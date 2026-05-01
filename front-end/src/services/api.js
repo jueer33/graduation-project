@@ -60,6 +60,16 @@ export const aiAPI = {
   designToCode: (designJson, framework) => 
     api.post('/ai/design-to-code', { designJson, framework }),
   
+  // 文本生成代码
+  textToCode: (text, framework) =>
+    api.post('/ai/text-to-code', { text, framework }),
+  
+  // 图片生成代码
+  imageToCode: (formData) =>
+    api.post('/ai/image-to-code', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+  
   // 流式对话接口
   chatStream: (text, sessionId = null, currentDesignJson = null, onMessage) => {
     return new Promise((resolve, reject) => {

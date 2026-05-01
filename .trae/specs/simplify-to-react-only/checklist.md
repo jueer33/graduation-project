@@ -1,0 +1,5 @@
+- [x] FrameworkSelector 组件只保留 React 选项
+- [x] DesignToCode 模块中不再显示框架选择器
+- [x] 所有代码生成 API 调用使用固定的 'react' 框架
+- [x] 后端代码生成接口固定使用 react 框架
+- [x] React 生成的代码可以在应用中直接预览

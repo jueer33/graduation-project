@@ -2,9 +2,7 @@ import React from 'react';
 import './FrameworkSelector.css';
 
 const frameworks = [
-  { value: 'react', label: 'React' },
-  { value: 'vue', label: 'Vue' },
-  { value: 'html', label: 'HTML' }
+  { value: 'react', label: 'React' }
 ];
 
 const FrameworkSelector = ({ value, onChange }) => {

@@ -746,6 +746,289 @@ function generateReplyText(prompt, designJson) {
   return '已为您生成设计稿，可以在右侧预览和编辑。如需调整，请继续描述您的需求。';
 }
 
+/**
+ * 生成代码输出格式的系统 Prompt
+ */
+const CODE_GENERATION_SYSTEM_PROMPT = `你是一个前端代码生成专家。根据用户的设计稿或需求，生成完整可运行的前端代码。
+
+## 输出格式（严格 JSON）
+{
+  "replyText": "对用户的友好回复",
+  "code": {
+    "type": "react" | "vue" | "html",
+    "files": [
+      {"path": "文件名", "content": "完整代码", "language": "javascript|css|html|vue"}
+    ]
+  }
+}
+
+## 要求
+- React: 函数式组件+Hooks，使用 export default 导出（不要用 module.exports），CSS 独立文件
+- Vue: Vue 3 Composition API，<script setup>，<style scoped>
+- HTML: 完整 HTML5 文档，内联 CSS/JS
+- 严格按照设计稿结构和样式生成
+- 代码完整可运行，不要省略任何部分
+- 必须返回合法 JSON，代码中双引号转义为 \"，换行用 \\n
+- 不要包含 markdown 代码块标记，replyText 用中文
+- 保持代码精简，避免冗余代码`;
+
+/**
+ * 解析代码生成结果
+ * @param {string} content - 千问返回的原始内容
+ * @returns {Object|null} 解析后的结果对象
+ */
+function parseCodeGenerationResult(content) {
+  if (!content) return null;
+
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    const codeBlockMatch = content.match(/\`\`\`(?:json)?\s*([\s\S]*?)\`\`\`/);
+    if (codeBlockMatch) {
+      try {
+        return JSON.parse(codeBlockMatch[1].trim());
+      } catch (e2) {
+        console.log('代码块解析失败，尝试其他方式');
+      }
+    }
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (e3) {
+        console.log('花括号提取解析失败');
+      }
+    }
+
+    const lastBrace = content.lastIndexOf('}');
+    const lastBracket = content.lastIndexOf(']');
+    const lastCompleteIndex = Math.max(lastBrace, lastBracket);
+
+    if (lastCompleteIndex > 0) {
+      const truncatedContent = content.substring(0, lastCompleteIndex + 1);
+      try {
+        const fixedJson = JSON.parse(truncatedContent);
+        console.log('成功解析截断后的 JSON');
+        return fixedJson;
+      } catch (e4) {
+        console.log('截断后解析仍然失败');
+      }
+    }
+
+    console.error('无法解析代码生成返回为 JSON:', content.substring(0, 200));
+    return null;
+  }
+}
+
+/**
+ * 根据 Design JSON 生成代码
+ * @param {Object} designJson - Design JSON 结构
+ * @param {string} framework - 目标框架 (react/vue/html)
+ * @returns {Promise<{code: Object, replyText: string}>}
+ */
+async function generateCodeFromDesign(designJson, framework) {
+  try {
+    const frameworkNames = {
+      react: 'React (JSX + CSS)',
+      vue: 'Vue 3 (SFC)',
+      html: '原生 HTML/CSS/JS'
+    };
+
+    const userPrompt = `将以下 Design JSON 转换为 ${frameworkNames[framework]} 代码：
+${JSON.stringify(designJson)}`;
+
+    console.log(`调用千问 API（代码生成-${framework}）`);
+
+    const response = await openai.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [
+        { role: 'system', content: CODE_GENERATION_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8000
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('千问 API 返回空内容');
+    }
+
+    console.log('代码生成返回内容长度:', content.length);
+
+    let result = parseCodeGenerationResult(content);
+
+    if (!result) {
+      console.log('首次解析失败，尝试使用 AI 修复 JSON...');
+      result = await retryParseWithAI(content);
+    }
+
+    if (!result || !result.code || !result.replyText) {
+      console.log('AI 修复 JSON 失败，返回内容预览:', content.substring(0, 500));
+      throw new Error('无法解析 AI 返回的代码数据');
+    }
+
+    result.code.type = framework;
+
+    return {
+      code: result.code,
+      replyText: result.replyText
+    };
+
+  } catch (error) {
+    console.error('根据 Design JSON 生成代码失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 根据文本描述生成代码
+ * @param {string} prompt - 用户文本描述
+ * @param {string} framework - 目标框架 (react/vue/html)
+ * @returns {Promise<{code: Object, replyText: string}>}
+ */
+async function generateCodeFromText(prompt, framework) {
+  try {
+    const frameworkNames = {
+      react: 'React (JSX + CSS)',
+      vue: 'Vue 3 (SFC)',
+      html: '原生 HTML/CSS/JS'
+    };
+
+    const userPrompt = `用户需求：${prompt}
+使用 ${frameworkNames[framework]} 生成完整可运行的代码。`;
+
+    console.log(`调用千问 API（文本→代码-${framework}）`);
+
+    const response = await openai.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [
+        { role: 'system', content: CODE_GENERATION_SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8000
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('千问 API 返回空内容');
+    }
+
+    console.log('代码生成返回内容长度:', content.length);
+
+    let result = parseCodeGenerationResult(content);
+
+    if (!result) {
+      console.log('首次解析失败，尝试使用 AI 修复 JSON...');
+      result = await retryParseWithAI(content);
+    }
+
+    if (!result || !result.code || !result.replyText) {
+      console.log('AI 修复 JSON 失败，返回内容预览:', content.substring(0, 500));
+      throw new Error('无法解析 AI 返回的代码数据');
+    }
+
+    result.code.type = framework;
+
+    return {
+      code: result.code,
+      replyText: result.replyText
+    };
+
+  } catch (error) {
+    console.error('根据文本生成代码失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 根据图片生成代码
+ * @param {string} prompt - 用户文本描述
+ * @param {Array} imageBase64Array - 图片 base64 数组
+ * @param {string} framework - 目标框架 (react/vue/html)
+ * @returns {Promise<{code: Object, replyText: string}>}
+ */
+async function generateCodeFromImages(prompt, imageBase64Array = [], framework) {
+  try {
+    const frameworkNames = {
+      react: 'React (JSX + CSS)',
+      vue: 'Vue 3 (SFC)',
+      html: '原生 HTML/CSS/JS'
+    };
+
+    const userContent = `根据图片和描述，使用 ${frameworkNames[framework]} 生成完整可运行的代码：${prompt || '根据图片内容生成对应页面代码'}`;
+
+    const userMessage = {
+      role: 'user',
+      content: []
+    };
+
+    userMessage.content.push({
+      type: 'text',
+      text: userContent
+    });
+
+    const maxImages = 5;
+    const imagesToProcess = imageBase64Array.slice(0, maxImages);
+    
+    for (const base64 of imagesToProcess) {
+      userMessage.content.push({
+        type: 'image_url',
+        image_url: {
+          url: base64
+        }
+      });
+    }
+
+    console.log(`调用千问视觉模型 API（图片→代码-${framework}），图片数: ${imagesToProcess.length}`);
+
+    const response = await openai.chat.completions.create({
+      model: VISION_MODEL,
+      messages: [
+        { role: 'system', content: CODE_GENERATION_SYSTEM_PROMPT },
+        userMessage
+      ],
+      temperature: 0.7,
+      max_tokens: 4096
+    });
+
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('千问视觉模型 API 返回空内容');
+    }
+
+    console.log('代码生成返回内容长度:', content.length);
+
+    let result = parseCodeGenerationResult(content);
+
+    if (!result) {
+      console.log('首次解析失败，尝试使用 AI 修复 JSON...');
+      result = await retryParseWithAI(content);
+    }
+
+    if (!result || !result.code || !result.replyText) {
+      console.log('AI 修复 JSON 失败，返回内容预览:', content.substring(0, 500));
+      throw new Error('无法解析 AI 返回的代码数据');
+    }
+
+    result.code.type = framework;
+
+    return {
+      code: result.code,
+      replyText: result.replyText
+    };
+
+  } catch (error) {
+    console.error('根据图片生成代码失败:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   generateDesignJson,
   generateDesignJsonFromImages,
@@ -753,5 +1036,8 @@ module.exports = {
   streamDesignJson,
   parseDesignJson,
   validateDesignJson,
-  fixDesignJsonFields
+  fixDesignJsonFields,
+  generateCodeFromDesign,
+  generateCodeFromText,
+  generateCodeFromImages
 };
